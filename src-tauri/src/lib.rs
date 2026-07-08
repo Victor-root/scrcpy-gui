@@ -1,4 +1,8 @@
 mod commands;
+// Windows-only: drag the borderless scrcpy window with the mouse
+// (Ctrl+Alt+Shift+W).
+#[cfg(target_os = "windows")]
+mod grab;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -62,14 +66,29 @@ pub fn run() {
         }
     }
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_dialog::init());
+
+    // Windows-only: the global-shortcut plugin must be registered on the builder
+    // (its setup wires the OS hotkey manager on the main thread). The shortcut
+    // itself is registered below in setup.
+    #[cfg(target_os = "windows")]
+    let builder = builder.plugin(grab::plugin());
+
+    builder
         .setup(|app| {
             app.manage(ScrcpyState {
                 processes: Mutex::new(HashMap::new()),
                 final_capture_hint: Mutex::new(HashMap::new()),
             });
+
+            // Windows-only: enable Ctrl+Alt+Shift+W to drag the borderless
+            // scrcpy window with the mouse. Non-fatal if it fails to register.
+            #[cfg(target_os = "windows")]
+            if let Err(e) = grab::register(app.handle()) {
+                eprintln!("[grab] failed to register window-move shortcut: {e}");
+            }
 
             // Show splashscreen instantly
             if let Some(splash_window) = app.get_webview_window("splashscreen") {
