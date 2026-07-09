@@ -58,6 +58,21 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        // Remember the main window's size, position and maximized state across
+        // restarts. Must be added here, before .setup(), because tauri builds
+        // config-defined windows (like "main") before the setup closure runs;
+        // registering the plugin inside setup() would miss restoring them. The
+        // splashscreen is a transient window and must be excluded from tracking.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .with_denylist(&["splashscreen"])
+                .build(),
+        )
         .setup(|app| {
             app.manage(ScrcpyState {
                 processes: Mutex::new(HashMap::new()),
