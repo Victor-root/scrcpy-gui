@@ -59,7 +59,11 @@ function App() {
     gnirehtetActive,
     isTogglingGnirehtet,
     startReverseTethering,
-    stopReverseTethering
+    stopReverseTethering,
+    gnirehtetStatus,
+    downloadGnirehtet,
+    isDownloadingGnirehtet,
+    gnirehtetDownloadProgress
   } = useScrcpy();
 
   const [alertState, setAlertState] = useState<{
@@ -381,6 +385,10 @@ function App() {
                     if (v) startReverseTethering(activeDevice);
                     else stopReverseTethering(activeDevice);
                   }}
+                  gnirehtetFound={gnirehtetStatus.found}
+                  isDownloadingGnirehtet={isDownloadingGnirehtet}
+                  gnirehtetDownloadProgress={gnirehtetDownloadProgress}
+                  onDownloadGnirehtet={downloadGnirehtet}
                 />
                 <ShortcutsPanel />
               </div>

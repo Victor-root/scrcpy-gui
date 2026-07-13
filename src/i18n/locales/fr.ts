@@ -209,7 +209,9 @@ export const fr: Translations = {
         internetSharingSection: 'Partage Internet (Expérimental)',
         internetSharing: 'Partager Internet du PC',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Partage la connexion internet de cet ordinateur avec l\'appareil. Démarre et s\'arrête à la volée, indépendamment de la session de mirroring, et réutilise l\'ADB propre à l\'application.',
-        internetSharingUnavailableTooltip: 'Démarrez le mirroring de cet appareil pour activer le partage internet.'
+        internetSharingUnavailableTooltip: 'Démarrez le mirroring de cet appareil pour activer le partage internet.',
+        internetSharingInstall: 'Installer',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: 'Raccourcis (Alt +)',

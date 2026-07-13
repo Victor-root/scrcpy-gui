@@ -213,7 +213,9 @@ export const zhCN: Translations = {
         internetSharingSection: '网络共享（实验性）',
         internetSharing: '共享电脑网络',
         internetSharingTooltip: '通过 ADB 进行反向网络共享（Gnirehtet）。将本机的网络连接共享给设备。可实时启动或停止，独立于镜像会话，并复用本应用自身的 ADB。',
-        internetSharingUnavailableTooltip: '请先开始镜像此设备，才能启用网络共享。'
+        internetSharingUnavailableTooltip: '请先开始镜像此设备，才能启用网络共享。',
+        internetSharingInstall: '安装',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: '快捷键 (Alt +)',

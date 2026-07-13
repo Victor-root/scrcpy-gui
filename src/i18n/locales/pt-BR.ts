@@ -209,7 +209,9 @@ export const ptBR: Translations = {
         internetSharingSection: 'Compartilhamento de Internet (Experimental)',
         internetSharing: 'Compartilhar Internet do PC',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Compartilha a conexão de internet deste computador com o dispositivo. Inicia e para em tempo real, independente da sessão de espelhamento, e reutiliza o ADB do próprio aplicativo.',
-        internetSharingUnavailableTooltip: 'Inicie o espelhamento deste dispositivo para ativar o compartilhamento de internet.'
+        internetSharingUnavailableTooltip: 'Inicie o espelhamento deste dispositivo para ativar o compartilhamento de internet.',
+        internetSharingInstall: 'Instalar',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: 'Atalhos (Alt +)',

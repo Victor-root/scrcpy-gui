@@ -209,7 +209,9 @@ export const zhTW: Translations = {
         internetSharingSection: '網路共享（實驗性）',
         internetSharing: '共享電腦網路',
         internetSharingTooltip: '透過 ADB 進行反向網路共享（Gnirehtet）。將這台電腦的網路連線共享給裝置。可即時啟動或停止，獨立於鏡像工作階段，並重複使用本應用程式自身的 ADB。',
-        internetSharingUnavailableTooltip: '請先開始鏡像此裝置，才能啟用網路共享。'
+        internetSharingUnavailableTooltip: '請先開始鏡像此裝置，才能啟用網路共享。',
+        internetSharingInstall: '安裝',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: '快捷鍵 (Alt +)',

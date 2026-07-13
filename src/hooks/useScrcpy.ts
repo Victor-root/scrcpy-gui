@@ -94,6 +94,9 @@ export function useScrcpy() {
     const [mdnsDevices, setMdnsDevices] = useState<MdnsDevice[]>([]);
     const [gnirehtetActive, setGnirehtetActive] = useState<Record<string, boolean>>({});
     const [isTogglingGnirehtet, setIsTogglingGnirehtet] = useState(false);
+    const [gnirehtetStatus, setGnirehtetStatus] = useState<{ found: boolean, message: string }>({ found: false, message: t('common.loading') });
+    const [isDownloadingGnirehtet, setIsDownloadingGnirehtet] = useState(false);
+    const [gnirehtetDownloadProgress, setGnirehtetDownloadProgress] = useState<number>(0);
     const [theme, setTheme] = useState("ultraviolet");
     const [colorMode, setColorModeState] = useState<'light' | 'dark' | 'system'>(() => {
         try {
@@ -146,10 +149,16 @@ export function useScrcpy() {
                 // Initial check with saved path if it exists
                 if (parsed.scrcpyPath) {
                     checkScrcpy(parsed.scrcpyPath);
+                    checkGnirehtet(parsed.scrcpyPath);
+                } else {
+                    checkGnirehtet();
                 }
             } catch (e) {
                 console.error("Failed to parse saved config", e);
+                checkGnirehtet();
             }
+        } else {
+            checkGnirehtet();
         }
 
         const initPaths = async () => {
@@ -260,12 +269,23 @@ export function useScrcpy() {
                 // reconnect, same as at mount or right after pairing.
                 refreshDevicesUntilSettled(data.message);
                 checkScrcpy(); // Re-check binary status
+            } else if (data.type === 'downloading-gnirehtet') {
+                setIsDownloadingGnirehtet(true);
+            } else if (data.type === 'download-complete-gnirehtet') {
+                setIsDownloadingGnirehtet(false);
+                setGnirehtetDownloadProgress(0);
+                checkGnirehtet(); // Re-check binary status
             }
+        });
+
+        const unlistenGnirehtetProgress = listen<{ percent: number }>('gnirehtet-download-progress', (event) => {
+            setGnirehtetDownloadProgress(event.payload.percent);
         });
 
         return () => {
             unlistenLog.then(f => f());
             unlistenStatus.then(f => f());
+            unlistenGnirehtetProgress.then(f => f());
         };
     }, [t]);
 
@@ -527,6 +547,28 @@ export function useScrcpy() {
         }
     };
 
+    const checkGnirehtet = async (customPath?: string) => {
+        try {
+            const pathToCheck = customPath !== undefined ? customPath : config.scrcpyPath;
+            const res: any = await invoke('check_gnirehtet', { customPath: pathToCheck });
+            setGnirehtetStatus(res);
+            return res.found;
+        } catch (e: any) {
+            setGnirehtetStatus({ found: false, message: t('logs.genericError', { error: String(e) }) });
+            return false;
+        }
+    };
+
+    const downloadGnirehtet = async () => {
+        try {
+            setIsDownloadingGnirehtet(true);
+            await invoke('download_gnirehtet');
+        } catch (e: any) {
+            setIsDownloadingGnirehtet(false);
+            setLogs(prev => [...prev, t('logs.downloadError', { error: String(e) })]);
+        }
+    };
+
     const checkScrcpy = async (customPath?: string) => {
         try {
             // If customPath is explicitly provided (even as undefined/null for reset), use it.
@@ -781,6 +823,11 @@ export function useScrcpy() {
         isTogglingGnirehtet,
         startReverseTethering,
         stopReverseTethering,
+        gnirehtetStatus,
+        checkGnirehtet,
+        downloadGnirehtet,
+        isDownloadingGnirehtet,
+        gnirehtetDownloadProgress,
         sessionRunning: runningDevices.includes(activeDevice || ''),
         isOnboardingOpen,
         setIsOnboardingOpen,

@@ -213,7 +213,9 @@ export const id: Translations = {
         internetSharingSection: 'Berbagi Internet (Eksperimental)',
         internetSharing: 'Bagikan Internet PC',
         internetSharingTooltip: 'Reverse tethering lewat ADB (Gnirehtet). Membagikan koneksi internet komputer ini ke perangkat. Bisa dinyalakan atau dimatikan langsung, terpisah dari sesi mirroring, dan memakai ADB milik aplikasi ini sendiri.',
-        internetSharingUnavailableTooltip: 'Mulai mirroring perangkat ini dulu untuk mengaktifkan berbagi internet.'
+        internetSharingUnavailableTooltip: 'Mulai mirroring perangkat ini dulu untuk mengaktifkan berbagi internet.',
+        internetSharingInstall: 'Instal',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: 'Pintasan (Alt +)',

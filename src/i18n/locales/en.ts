@@ -211,7 +211,9 @@ export const en = {
         internetSharingSection: 'Internet Sharing (Experimental)',
         internetSharing: 'Share PC Internet',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Shares this computer\'s internet connection with the device. Starts and stops live, independently of the mirror session, and reuses this app\'s own ADB.',
-        internetSharingUnavailableTooltip: 'Start mirroring this device to enable internet sharing.'
+        internetSharingUnavailableTooltip: 'Start mirroring this device to enable internet sharing.',
+        internetSharingInstall: 'Install',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: 'Shortcuts (Alt +)',

@@ -220,6 +220,8 @@ export const ru: Translations = {
     internetSharing: 'Раздать интернет с ПК',
     internetSharingTooltip: 'Обратное подключение через ADB (Gnirehtet). Раздаёт интернет-соединение этого компьютера на устройство. Запускается и останавливается вживую, независимо от сеанса трансляции, и использует собственный ADB приложения.',
     internetSharingUnavailableTooltip: 'Запустите трансляцию этого устройства, чтобы включить раздачу интернета.',
+    internetSharingInstall: 'Установить',
+    internetSharingDownloading: '{progress}%',
   },
 
   shortcuts: {
