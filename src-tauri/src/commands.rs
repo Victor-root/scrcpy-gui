@@ -1810,7 +1810,14 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
         let mut download_resp = client.get(&download_url).send().await.map_err(|e| format!("Failed to connect to download URL: {}", e))?;
         let total_size = download_resp.content_length().unwrap_or(0);
 
-        window.emit("scrcpy-log", format!("[GNIREHTET] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+        // GitHub's redirect target does not always send a Content-Length
+        // (chunked transfer encoding), in which case total_size is 0: say so
+        // plainly instead of printing a misleading "Downloading: 0 MB".
+        if total_size > 0 {
+            window.emit("scrcpy-log", format!("[GNIREHTET] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+        } else {
+            window.emit("scrcpy-log", "[GNIREHTET] Downloading (size unknown)...").unwrap();
+        }
 
         let mut downloaded: u64 = 0;
         while let Some(chunk) = download_resp.chunk().await.map_err(|e| e.to_string())? {
@@ -1821,6 +1828,8 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
                 let _ = window.emit("gnirehtet-download-progress", json!({ "percent": percent }));
             }
         }
+
+        window.emit("scrcpy-log", format!("[GNIREHTET] Downloaded {} MB.", downloaded / 1024 / 1024)).unwrap();
     }
 
     window.emit("scrcpy-log", "[GNIREHTET] Download finished. Verifying checksum...").unwrap();
@@ -1980,8 +1989,15 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
         let mut file = std::fs::File::create(&temp_archive_path).map_err(|e| format!("Failed to create archive file: {}", e))?;
         let mut download_resp = client.get(&download_url).send().await.map_err(|e| format!("Failed to connect to download URL: {}", e))?;
         let total_size = download_resp.content_length().unwrap_or(0);
-        
-        window.emit("scrcpy-log", format!("[SYSTEM] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+
+        // GitHub's redirect target does not always send a Content-Length
+        // (chunked transfer encoding), in which case total_size is 0: say so
+        // plainly instead of printing a misleading "Downloading: 0 MB".
+        if total_size > 0 {
+            window.emit("scrcpy-log", format!("[SYSTEM] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+        } else {
+            window.emit("scrcpy-log", "[SYSTEM] Downloading (size unknown)...").unwrap();
+        }
 
         let mut downloaded: u64 = 0;
         while let Some(chunk) = download_resp.chunk().await.map_err(|e| e.to_string())? {
@@ -1992,6 +2008,8 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
                 let _ = window.emit("download-progress", json!({ "percent": percent }));
             }
         }
+
+        window.emit("scrcpy-log", format!("[SYSTEM] Downloaded {} MB.", downloaded / 1024 / 1024)).unwrap();
     }
     
     window.emit("scrcpy-log", "[SYSTEM] Download finished. Starting extraction...").unwrap();
