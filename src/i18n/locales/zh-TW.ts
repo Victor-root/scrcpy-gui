@@ -209,7 +209,8 @@ export const zhTW: Translations = {
         internetSharingSection: '網路共享（實驗性）',
         internetSharing: '共享電腦網路',
         internetSharingTooltip: '透過 ADB 進行反向網路共享（Gnirehtet）。將這台電腦的網路連線共享給裝置。可即時啟動或停止，獨立於鏡像工作階段，並重複使用本應用程式自身的 ADB。',
-        internetSharingUnavailableTooltip: '請先開始鏡像此裝置，才能啟用網路共享。',
+        internetSharingUnavailableTooltip: '請在裝置中心選擇一個已連線的裝置，才能啟用網路共享。',
+        internetSharingManualInstall: '手動安裝',
         internetSharingInstall: '安裝',
         internetSharingDownloading: '{progress}%'
     },
@@ -311,6 +312,7 @@ export const zhTW: Translations = {
         installingApk: '[系統] 正在 {device} 安裝 APK：{filePath}...',
         adbPrefix: '[ADB] {message}',
         commandFailed: '[錯誤] 指令失敗：{error}',
-        gnirehtetStartFailed: '[錯誤] 啟動網路共享失敗：{error}'
+        gnirehtetStartFailed: '[錯誤] 啟動網路共享失敗：{error}',
+        gnirehtetRelayDown: '[GNIREHTET] 中繼伺服器意外停止，所有裝置的網路共享已停用。'
     }
 };

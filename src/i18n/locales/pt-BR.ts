@@ -209,7 +209,8 @@ export const ptBR: Translations = {
         internetSharingSection: 'Compartilhamento de Internet (Experimental)',
         internetSharing: 'Compartilhar Internet do PC',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Compartilha a conexão de internet deste computador com o dispositivo. Inicia e para em tempo real, independente da sessão de espelhamento, e reutiliza o ADB do próprio aplicativo.',
-        internetSharingUnavailableTooltip: 'Inicie o espelhamento deste dispositivo para ativar o compartilhamento de internet.',
+        internetSharingUnavailableTooltip: 'Selecione um dispositivo conectado no Hub de Dispositivos para ativar o compartilhamento de internet.',
+        internetSharingManualInstall: 'Instalação manual',
         internetSharingInstall: 'Instalar',
         internetSharingDownloading: '{progress}%'
     },
@@ -311,6 +312,7 @@ export const ptBR: Translations = {
         installingApk: '[SYSTEM] Instalando APK em {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
         commandFailed: '[ERROR] Comando falhou: {error}',
-        gnirehtetStartFailed: '[ERROR] Falha ao iniciar o compartilhamento de internet: {error}'
+        gnirehtetStartFailed: '[ERROR] Falha ao iniciar o compartilhamento de internet: {error}',
+        gnirehtetRelayDown: '[GNIREHTET] O servidor relay parou inesperadamente, compartilhamento de internet desativado para todos os dispositivos.'
     }
 };

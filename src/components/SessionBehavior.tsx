@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { ScrcpyConfig } from '../hooks/useScrcpy';
 import Tooltip from './Tooltip';
-import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Wifi, Download, RefreshCw } from 'lucide-react';
+import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Wifi, Download, RefreshCw, ExternalLink } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 const AUDIO_CODEC_VALUES = ['auto', 'opus', 'aac', 'flac', 'raw'] as const;
@@ -19,6 +19,7 @@ interface SessionBehaviorProps {
     isDownloadingGnirehtet: boolean;
     gnirehtetDownloadProgress: number;
     onDownloadGnirehtet: () => void;
+    hostOs: string;
 }
 
 export default function SessionBehavior({
@@ -31,7 +32,8 @@ export default function SessionBehavior({
     gnirehtetFound,
     isDownloadingGnirehtet,
     gnirehtetDownloadProgress,
-    onDownloadGnirehtet
+    onDownloadGnirehtet,
+    hostOs
 }: SessionBehaviorProps) {
     const { t } = useI18n();
 
@@ -248,18 +250,29 @@ export default function SessionBehavior({
                                     <Tooltip text={t('sessionBehavior.internetSharingTooltip')} />
                                 </div>
                             </div>
-                            <button
-                                type="button"
-                                onClick={onDownloadGnirehtet}
-                                disabled={isDownloadingGnirehtet}
-                                className="inline-flex items-center gap-1 shrink-0 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-md px-2 py-1 text-[8px] font-black uppercase tracking-wider text-primary transition-colors disabled:opacity-60 disabled:pointer-events-none"
-                            >
-                                {isDownloadingGnirehtet ? (
-                                    <><RefreshCw size={10} className="animate-spin" /> {t('sessionBehavior.internetSharingDownloading', { progress: gnirehtetDownloadProgress })}</>
-                                ) : (
-                                    <><Download size={10} /> {t('sessionBehavior.internetSharingInstall')}</>
-                                )}
-                            </button>
+                            {hostOs === 'macos' ? (
+                                <a
+                                    href="https://github.com/Genymobile/gnirehtet/releases/latest"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 shrink-0 text-[8px] font-black uppercase tracking-wider text-primary hover:underline"
+                                >
+                                    {t('sessionBehavior.internetSharingManualInstall')} <ExternalLink size={10} />
+                                </a>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={onDownloadGnirehtet}
+                                    disabled={isDownloadingGnirehtet}
+                                    className="inline-flex items-center gap-1 shrink-0 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-md px-2 py-1 text-[8px] font-black uppercase tracking-wider text-primary transition-colors disabled:opacity-60 disabled:pointer-events-none"
+                                >
+                                    {isDownloadingGnirehtet ? (
+                                        <><RefreshCw size={10} className="animate-spin" /> {t('sessionBehavior.internetSharingDownloading', { progress: gnirehtetDownloadProgress })}</>
+                                    ) : (
+                                        <><Download size={10} /> {t('sessionBehavior.internetSharingInstall')}</>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>

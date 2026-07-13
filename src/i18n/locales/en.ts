@@ -211,9 +211,10 @@ export const en = {
         internetSharingSection: 'Internet Sharing (Experimental)',
         internetSharing: 'Share PC Internet',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Shares this computer\'s internet connection with the device. Starts and stops live, independently of the mirror session, and reuses this app\'s own ADB.',
-        internetSharingUnavailableTooltip: 'Start mirroring this device to enable internet sharing.',
+        internetSharingUnavailableTooltip: 'Select a connected device in the Device Hub to enable internet sharing.',
         internetSharingInstall: 'Install',
-        internetSharingDownloading: '{progress}%'
+        internetSharingDownloading: '{progress}%',
+        internetSharingManualInstall: 'Manual install'
     },
     shortcuts: {
         title: 'Shortcuts (Alt +)',
@@ -313,7 +314,8 @@ export const en = {
         installingApk: '[SYSTEM] Installing APK on {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
         commandFailed: '[ERROR] Command failed: {error}',
-        gnirehtetStartFailed: '[ERROR] Failed to start internet sharing: {error}'
+        gnirehtetStartFailed: '[ERROR] Failed to start internet sharing: {error}',
+        gnirehtetRelayDown: '[GNIREHTET] Relay server stopped unexpectedly, internet sharing disabled for all devices.'
     }
 };
 

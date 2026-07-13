@@ -209,7 +209,8 @@ export const fr: Translations = {
         internetSharingSection: 'Partage Internet (Expérimental)',
         internetSharing: 'Partager Internet du PC',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Partage la connexion internet de cet ordinateur avec l\'appareil. Démarre et s\'arrête à la volée, indépendamment de la session de mirroring, et réutilise l\'ADB propre à l\'application.',
-        internetSharingUnavailableTooltip: 'Démarrez le mirroring de cet appareil pour activer le partage internet.',
+        internetSharingUnavailableTooltip: 'Sélectionnez un appareil connecté dans le Hub d\'appareils pour activer le partage internet.',
+        internetSharingManualInstall: 'Installation manuelle',
         internetSharingInstall: 'Installer',
         internetSharingDownloading: '{progress}%'
     },
@@ -311,6 +312,7 @@ export const fr: Translations = {
         installingApk: '[SYSTEM] Installation de l\'APK sur {device} : {filePath}...',
         adbPrefix: '[ADB] {message}',
         commandFailed: '[ERROR] La commande a échoué : {error}',
-        gnirehtetStartFailed: '[ERROR] Échec du démarrage du partage internet : {error}'
+        gnirehtetStartFailed: '[ERROR] Échec du démarrage du partage internet : {error}',
+        gnirehtetRelayDown: '[GNIREHTET] Le serveur relay s\'est arrêté de manière inattendue, partage internet désactivé pour tous les appareils.'
     }
 };

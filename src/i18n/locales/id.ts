@@ -213,7 +213,8 @@ export const id: Translations = {
         internetSharingSection: 'Berbagi Internet (Eksperimental)',
         internetSharing: 'Bagikan Internet PC',
         internetSharingTooltip: 'Reverse tethering lewat ADB (Gnirehtet). Membagikan koneksi internet komputer ini ke perangkat. Bisa dinyalakan atau dimatikan langsung, terpisah dari sesi mirroring, dan memakai ADB milik aplikasi ini sendiri.',
-        internetSharingUnavailableTooltip: 'Mulai mirroring perangkat ini dulu untuk mengaktifkan berbagi internet.',
+        internetSharingUnavailableTooltip: 'Pilih perangkat yang terhubung di Hub Perangkat untuk mengaktifkan berbagi internet.',
+        internetSharingManualInstall: 'Instal manual',
         internetSharingInstall: 'Instal',
         internetSharingDownloading: '{progress}%'
     },
@@ -315,6 +316,7 @@ export const id: Translations = {
         installingApk: '[SISTEM] Memasang APK di {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
         commandFailed: '[ERROR] Perintah gagal: {error}',
-        gnirehtetStartFailed: '[ERROR] Gagal memulai berbagi internet: {error}'
+        gnirehtetStartFailed: '[ERROR] Gagal memulai berbagi internet: {error}',
+        gnirehtetRelayDown: '[GNIREHTET] Server relay berhenti tanpa diduga, berbagi internet dinonaktifkan untuk semua perangkat.'
     }
 };

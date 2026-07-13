@@ -219,7 +219,8 @@ export const ru: Translations = {
     internetSharingSection: 'Общий доступ в интернет (экспериментально)',
     internetSharing: 'Раздать интернет с ПК',
     internetSharingTooltip: 'Обратное подключение через ADB (Gnirehtet). Раздаёт интернет-соединение этого компьютера на устройство. Запускается и останавливается вживую, независимо от сеанса трансляции, и использует собственный ADB приложения.',
-    internetSharingUnavailableTooltip: 'Запустите трансляцию этого устройства, чтобы включить раздачу интернета.',
+    internetSharingUnavailableTooltip: 'Выберите подключённое устройство в Хабе устройств, чтобы включить раздачу интернета.',
+    internetSharingManualInstall: 'Установка вручную',
     internetSharingInstall: 'Установить',
     internetSharingDownloading: '{progress}%',
   },
@@ -329,5 +330,6 @@ export const ru: Translations = {
     adbPrefix: '[ADB] {message}',
     commandFailed: '[ERROR] Команда завершилась с ошибкой: {error}',
     gnirehtetStartFailed: '[ERROR] Не удалось запустить раздачу интернета: {error}',
+    gnirehtetRelayDown: '[GNIREHTET] Сервер relay неожиданно остановился, раздача интернета отключена для всех устройств.',
   },
 };

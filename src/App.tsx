@@ -378,7 +378,7 @@ function App() {
                   config={config}
                   setConfig={setConfig}
                   internetSharingActive={!!gnirehtetActive[activeDevice || '']}
-                  internetSharingAvailable={sessionRunning}
+                  internetSharingAvailable={!!activeDevice && devices.includes(activeDevice)}
                   internetSharingBusy={isTogglingGnirehtet}
                   onToggleInternetSharing={(v) => {
                     if (!activeDevice) return;
@@ -389,6 +389,7 @@ function App() {
                   isDownloadingGnirehtet={isDownloadingGnirehtet}
                   gnirehtetDownloadProgress={gnirehtetDownloadProgress}
                   onDownloadGnirehtet={downloadGnirehtet}
+                  hostOs={renderDriverSupport.hostOs}
                 />
                 <ShortcutsPanel />
               </div>

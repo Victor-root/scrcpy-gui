@@ -244,16 +244,11 @@ export function useScrcpy() {
                         return prev.filter(d => d !== data.device);
                     }
                 });
-                if (!data.running) {
-                    // The backend already tears down internet sharing when a
-                    // mirror session ends; keep the toggle state in sync.
-                    setGnirehtetActive(prev => {
-                        if (!prev[data.device]) return prev;
-                        const next = { ...prev };
-                        delete next[data.device];
-                        return next;
-                    });
-                }
+            } else if (data.type === 'gnirehtet-relay-down') {
+                // The shared relay died unexpectedly: every device using it
+                // just lost internet sharing, so clear all of them at once.
+                setGnirehtetActive({});
+                setLogs(prev => [...prev.slice(-100), t('logs.gnirehtetRelayDown')]);
             } else if (data.type === 'downloading') {
                 setIsDownloading(true);
                 setStatus(data.message);
@@ -341,6 +336,11 @@ export function useScrcpy() {
 
                 removed.forEach(device => {
                     setLogs(prev => [...prev.slice(-100), t('logs.deviceDisconnected', { device })]);
+                    // Internet sharing is no longer tied to mirroring, so a
+                    // vanished device is the only remaining signal to clean it up.
+                    if (gnirehtetActive[device]) {
+                        stopReverseTethering(device);
+                    }
                 });
 
                 setDevices(newDevices);
