@@ -134,7 +134,7 @@ export default function ControlPanel({
 
     // BitrateControl removed from here
 
-    const PerformanceGrid = ({ showResolution = true }: { showResolution?: boolean }) => (
+    const PerformanceGrid = ({ showResolution = true, showCodec = true }: { showResolution?: boolean, showCodec?: boolean }) => (
         <>
         <div className={`grid ${showResolution ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
             {showResolution && (
@@ -151,6 +151,18 @@ export default function ControlPanel({
                         { value: "1280", label: "720p" },
                         { value: "1024", label: "576p" },
                         { value: "800", label: "480p" },
+                    ]}
+                />
+            )}
+            {showCodec && (
+                <CustomSelect
+                    label={t('controlPanel.codec')}
+                    value={config.codec || "h264"}
+                    onChange={(val) => handleChange('codec', val)}
+                    options={[
+                        { value: "h264", label: "H.264" },
+                        { value: "h265", label: "H.265" },
+                        { value: "av1", label: "AV1" },
                     ]}
                 />
             )}
@@ -429,7 +441,7 @@ export default function ControlPanel({
                             </div>
 
                             <div className={`space-y-2.5 pt-0.5`}>
-                                <PerformanceGrid />
+                                <PerformanceGrid showCodec={false} />
                                 <BitrateControl label={t('controlPanel.bitrate')} value={config.bitrate || 8} onChange={(v) => handleChange('bitrate', v)} />
                             </div>
                         </div>
