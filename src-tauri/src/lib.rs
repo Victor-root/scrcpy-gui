@@ -99,6 +99,7 @@ pub fn run() {
             commands::run_terminal_command,
             commands::check_scrcpy_update,
             commands::check_gnirehtet,
+            commands::download_gnirehtet,
             commands::start_reverse_tethering,
             commands::stop_reverse_tethering,
             close_splashscreen,

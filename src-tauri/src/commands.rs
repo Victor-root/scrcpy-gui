@@ -1636,6 +1636,139 @@ pub async fn stop_reverse_tethering(window: Window, state: State<'_, GnirehtetSt
 }
 
 #[tauri::command]
+pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
+    use std::io::Write;
+
+    // Only the Rust rewrite ships prebuilt binaries, and only for these two targets.
+    let arch_tag = if cfg!(target_os = "windows") && cfg!(target_arch = "x86_64") {
+        "win64"
+    } else if cfg!(target_os = "linux") && cfg!(target_arch = "x86_64") {
+        "linux64"
+    } else {
+        return Err("Gnirehtet auto-download is only available for 64-bit Windows and Linux. Install it manually from the Gnirehtet GitHub releases page.".to_string());
+    };
+
+    window.emit("scrcpy-log", format!("[GNIREHTET] Detecting platform: {}", arch_tag)).unwrap();
+    window.emit("scrcpy-status", json!({ "type": "downloading-gnirehtet", "success": true, "message": format!("Fetching latest {} release...", arch_tag) })).unwrap();
+
+    let client = reqwest::Client::builder().user_agent("ScrcpyGui-Downloader").build().map_err(|e| e.to_string())?;
+
+    let mut download_url = String::new();
+    let mut filename = String::new();
+
+    let api_url = "https://api.github.com/repos/Genymobile/gnirehtet/releases/latest";
+    let api_resp = client.get(api_url).send().await;
+
+    let mut used_fallback = false;
+
+    if let Ok(resp) = api_resp {
+        if resp.status().is_success() {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if let Some(assets) = json["assets"].as_array() {
+                    for asset in assets {
+                        let name = asset["name"].as_str().unwrap_or("");
+                        if name.starts_with(&format!("gnirehtet-rust-{}-", arch_tag)) && name.ends_with(".zip") {
+                            download_url = asset["browser_download_url"].as_str().unwrap_or("").to_string();
+                            filename = name.to_string();
+                            break;
+                        }
+                    }
+                }
+            }
+        } else if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            window.emit("scrcpy-log", "[GNIREHTET] API rate limited, attempting fallback discovery...").unwrap();
+            used_fallback = true;
+        }
+    } else {
+        used_fallback = true;
+    }
+
+    if used_fallback || download_url.is_empty() {
+        let redirect_res = client.get("https://github.com/Genymobile/gnirehtet/releases/latest")
+            .send().await.map_err(|e| format!("Fallback failed: {}", e))?;
+
+        let final_url = redirect_res.url().as_str();
+        if let Some(tag) = final_url.split('/').next_back() {
+            if tag.starts_with('v') {
+                filename = format!("gnirehtet-rust-{}-{}.zip", arch_tag, tag);
+                download_url = format!("https://github.com/Genymobile/gnirehtet/releases/download/{}/{}", tag, filename);
+                window.emit("scrcpy-log", format!("[GNIREHTET] Discovered latest tag via fallback: {}", tag)).unwrap();
+            }
+        }
+    }
+
+    if download_url.is_empty() {
+        return Err(format!("Could not find {} binary. (API rate limit might be active)", arch_tag));
+    }
+
+    window.emit("scrcpy-log", format!("[GNIREHTET] Found asset: {}", filename)).unwrap();
+
+    let current_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .unwrap_or_else(|| std::env::current_dir().unwrap());
+
+    let temp_archive_path = current_dir.join("gnirehtet_temp.zip");
+    // Reuse the same bin folder as scrcpy/adb so the app only manages one directory,
+    // and merge into it below instead of wiping it (download_scrcpy's approach) since
+    // it may already hold scrcpy/adb.
+    let extract_path = current_dir.join("scrcpy-bin");
+
+    {
+        let mut file = std::fs::File::create(&temp_archive_path).map_err(|e| format!("Failed to create archive file: {}", e))?;
+        let mut download_resp = client.get(&download_url).send().await.map_err(|e| format!("Failed to connect to download URL: {}", e))?;
+        let total_size = download_resp.content_length().unwrap_or(0);
+
+        window.emit("scrcpy-log", format!("[GNIREHTET] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+
+        let mut downloaded: u64 = 0;
+        while let Some(chunk) = download_resp.chunk().await.map_err(|e| e.to_string())? {
+            file.write_all(&chunk).map_err(|e| format!("Failed to write chunk: {}", e))?;
+            downloaded += chunk.len() as u64;
+            if total_size > 0 {
+                let percent = (downloaded * 100) / total_size;
+                let _ = window.emit("gnirehtet-download-progress", json!({ "percent": percent }));
+            }
+        }
+    }
+
+    window.emit("scrcpy-log", "[GNIREHTET] Download finished. Starting extraction...").unwrap();
+    window.emit("scrcpy-status", json!({ "type": "downloading-gnirehtet", "success": true, "message": "Extracting binaries..." })).unwrap();
+
+    let temp_extract_dir = current_dir.join("gnirehtet_temp_extract");
+    if temp_extract_dir.exists() {
+        let _ = std::fs::remove_dir_all(&temp_extract_dir);
+    }
+    std::fs::create_dir_all(&temp_extract_dir).map_err(|e| e.to_string())?;
+
+    {
+        let file = std::fs::File::open(&temp_archive_path).map_err(|e| format!("Failed to open zip: {}", e))?;
+        let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+        archive.extract(&temp_extract_dir).map_err(|e| format!("Failed to extract: {}", e))?;
+    }
+
+    // Merge into the existing scrcpy-bin folder (adb/scrcpy may already live there)
+    // instead of replacing it outright.
+    let mut entries = std::fs::read_dir(&temp_extract_dir).map_err(|e| e.to_string())?;
+    if let Some(entry) = entries.next() {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            copy_dir_all(&path, &extract_path).map_err(|e| e.to_string())?;
+        } else {
+            copy_dir_all(&temp_extract_dir, &extract_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    if temp_extract_dir.exists() { let _ = std::fs::remove_dir_all(&temp_extract_dir); }
+    if temp_archive_path.exists() { let _ = std::fs::remove_file(&temp_archive_path); }
+
+    window.emit("scrcpy-status", json!({ "type": "download-complete-gnirehtet", "success": true, "message": extract_path.to_string_lossy() })).unwrap();
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn download_scrcpy(window: Window) -> Result<(), String> {
     use std::io::Write;
     
