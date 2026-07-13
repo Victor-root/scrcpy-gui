@@ -205,7 +205,11 @@ export const ptBR: Translations = {
         selectRecordingFolderTitle: 'Selecionar Pasta de Gravação',
         // v4 features
         keepActive: 'Manter Ativo',
-        keepActiveTooltip: 'Simula atividade do usuário para evitar que a tela entre em modo ocioso (scrcpy v4+).'
+        keepActiveTooltip: 'Simula atividade do usuário para evitar que a tela entre em modo ocioso (scrcpy v4+).',
+        internetSharingSection: 'Compartilhamento de Internet (Experimental)',
+        internetSharing: 'Compartilhar Internet do PC',
+        internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Compartilha a conexão de internet deste computador com o dispositivo. Inicia e para em tempo real, independente da sessão de espelhamento, e reutiliza o ADB do próprio aplicativo.',
+        internetSharingUnavailableTooltip: 'Inicie o espelhamento deste dispositivo para ativar o compartilhamento de internet.'
     },
     shortcuts: {
         title: 'Atalhos (Alt +)',
@@ -304,6 +308,7 @@ export const ptBR: Translations = {
         pushingFile: '[SYSTEM] Enviando arquivo para {device}: {filePath}...',
         installingApk: '[SYSTEM] Instalando APK em {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[ERROR] Comando falhou: {error}'
+        commandFailed: '[ERROR] Comando falhou: {error}',
+        gnirehtetStartFailed: '[ERROR] Falha ao iniciar o compartilhamento de internet: {error}'
     }
 };

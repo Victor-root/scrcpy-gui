@@ -209,7 +209,11 @@ export const zhCN: Translations = {
         selectRecordingFolderTitle: '选择录制文件夹',
         // v4 features
         keepActive: '保持活跃',
-        keepActiveTooltip: '模拟用户操作以防止屏幕进入空闲状态（scrcpy v4+）。'
+        keepActiveTooltip: '模拟用户操作以防止屏幕进入空闲状态（scrcpy v4+）。',
+        internetSharingSection: '网络共享（实验性）',
+        internetSharing: '共享电脑网络',
+        internetSharingTooltip: '通过 ADB 进行反向网络共享（Gnirehtet）。将本机的网络连接共享给设备。可实时启动或停止，独立于镜像会话，并复用本应用自身的 ADB。',
+        internetSharingUnavailableTooltip: '请先开始镜像此设备，才能启用网络共享。'
     },
     shortcuts: {
         title: '快捷键 (Alt +)',
@@ -308,6 +312,7 @@ export const zhCN: Translations = {
         pushingFile: '[系统] 正在将文件推送到 {device}：{filePath}...',
         installingApk: '[系统] 正在向 {device} 安装 APK：{filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[错误] 命令执行失败：{error}'
+        commandFailed: '[错误] 命令执行失败：{error}',
+        gnirehtetStartFailed: '[错误] 启动网络共享失败：{error}'
     }
 };

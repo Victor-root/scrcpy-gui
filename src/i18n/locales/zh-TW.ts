@@ -205,7 +205,11 @@ export const zhTW: Translations = {
         selectRecordingFolderTitle: '選擇錄影資料夾',
         // v4 features
         keepActive: '保持活躍',
-        keepActiveTooltip: '模擬使用者操作以防止螢幕進入閒置狀態（scrcpy v4+）。'
+        keepActiveTooltip: '模擬使用者操作以防止螢幕進入閒置狀態（scrcpy v4+）。',
+        internetSharingSection: '網路共享（實驗性）',
+        internetSharing: '共享電腦網路',
+        internetSharingTooltip: '透過 ADB 進行反向網路共享（Gnirehtet）。將這台電腦的網路連線共享給裝置。可即時啟動或停止，獨立於鏡像工作階段，並重複使用本應用程式自身的 ADB。',
+        internetSharingUnavailableTooltip: '請先開始鏡像此裝置，才能啟用網路共享。'
     },
     shortcuts: {
         title: '快捷鍵 (Alt +)',
@@ -304,6 +308,7 @@ export const zhTW: Translations = {
         pushingFile: '[系統] 正在將檔案傳送至 {device}：{filePath}...',
         installingApk: '[系統] 正在 {device} 安裝 APK：{filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[錯誤] 指令失敗：{error}'
+        commandFailed: '[錯誤] 指令失敗：{error}',
+        gnirehtetStartFailed: '[錯誤] 啟動網路共享失敗：{error}'
     }
 };

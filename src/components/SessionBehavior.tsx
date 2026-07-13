@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { ScrcpyConfig } from '../hooks/useScrcpy';
 import Tooltip from './Tooltip';
-import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare } from 'lucide-react';
+import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Wifi } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 const AUDIO_CODEC_VALUES = ['auto', 'opus', 'aac', 'flac', 'raw'] as const;
@@ -11,9 +11,13 @@ type AudioCodec = typeof AUDIO_CODEC_VALUES[number];
 interface SessionBehaviorProps {
     config: ScrcpyConfig;
     setConfig: (c: ScrcpyConfig) => void;
+    internetSharingActive: boolean;
+    internetSharingAvailable: boolean;
+    internetSharingBusy: boolean;
+    onToggleInternetSharing: (v: boolean) => void;
 }
 
-export default function SessionBehavior({ config, setConfig }: SessionBehaviorProps) {
+export default function SessionBehavior({ config, setConfig, internetSharingActive, internetSharingAvailable, internetSharingBusy, onToggleInternetSharing }: SessionBehaviorProps) {
     const { t } = useI18n();
 
     const handleChange = (field: keyof ScrcpyConfig, value: any) => {
@@ -200,6 +204,21 @@ export default function SessionBehavior({ config, setConfig }: SessionBehaviorPr
                         tooltip={t('sessionBehavior.recordFeedTooltip')}
                         danger={true}
                     />
+                </div>
+
+                <div className="pt-2 border-t border-zinc-800/50 space-y-1">
+                    <div className="flex items-center gap-1.5 px-2">
+                        <span className="text-[8px] font-black uppercase text-zinc-600 tracking-widest">{t('sessionBehavior.internetSharingSection')}</span>
+                    </div>
+                    <div className={`transition-opacity ${internetSharingAvailable ? 'opacity-100' : 'opacity-40 pointer-events-none'} ${internetSharingBusy ? 'pointer-events-none' : ''}`}>
+                        <Toggle
+                            checked={internetSharingActive}
+                            onChange={onToggleInternetSharing}
+                            icon={Wifi}
+                            label={t('sessionBehavior.internetSharing')}
+                            tooltip={internetSharingAvailable ? t('sessionBehavior.internetSharingTooltip') : t('sessionBehavior.internetSharingUnavailableTooltip')}
+                        />
+                    </div>
                 </div>
 
                 <div className="pt-2 border-t border-zinc-800/50 space-y-2">

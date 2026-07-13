@@ -216,6 +216,10 @@ export const ru: Translations = {
     // v4 features
     keepActive: 'Держать активным',
     keepActiveTooltip: 'Имитирует активность пользователя, чтобы экран не отключался (scrcpy v4+).',
+    internetSharingSection: 'Общий доступ в интернет (экспериментально)',
+    internetSharing: 'Раздать интернет с ПК',
+    internetSharingTooltip: 'Обратное подключение через ADB (Gnirehtet). Раздаёт интернет-соединение этого компьютера на устройство. Запускается и останавливается вживую, независимо от сеанса трансляции, и использует собственный ADB приложения.',
+    internetSharingUnavailableTooltip: 'Запустите трансляцию этого устройства, чтобы включить раздачу интернета.',
   },
 
   shortcuts: {
@@ -322,5 +326,6 @@ export const ru: Translations = {
     installingApk: '[SYSTEM] Установка APK на {device}: {filePath}...',
     adbPrefix: '[ADB] {message}',
     commandFailed: '[ERROR] Команда завершилась с ошибкой: {error}',
+    gnirehtetStartFailed: '[ERROR] Не удалось запустить раздачу интернета: {error}',
   },
 };

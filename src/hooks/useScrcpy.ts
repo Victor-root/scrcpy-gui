@@ -92,6 +92,8 @@ export function useScrcpy() {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
     const [mdnsDevices, setMdnsDevices] = useState<MdnsDevice[]>([]);
+    const [gnirehtetActive, setGnirehtetActive] = useState<Record<string, boolean>>({});
+    const [isTogglingGnirehtet, setIsTogglingGnirehtet] = useState(false);
     const [theme, setTheme] = useState("ultraviolet");
     const [colorMode, setColorModeState] = useState<'light' | 'dark' | 'system'>(() => {
         try {
@@ -233,6 +235,16 @@ export function useScrcpy() {
                         return prev.filter(d => d !== data.device);
                     }
                 });
+                if (!data.running) {
+                    // The backend already tears down internet sharing when a
+                    // mirror session ends; keep the toggle state in sync.
+                    setGnirehtetActive(prev => {
+                        if (!prev[data.device]) return prev;
+                        const next = { ...prev };
+                        delete next[data.device];
+                        return next;
+                    });
+                }
             } else if (data.type === 'downloading') {
                 setIsDownloading(true);
                 setStatus(data.message);
@@ -465,6 +477,43 @@ export function useScrcpy() {
             await invoke('stop_scrcpy', { device });
         } catch (e) {
             console.error(e);
+        }
+    };
+
+    const startReverseTethering = async (device: string) => {
+        if (!device || isTogglingGnirehtet) return;
+        setIsTogglingGnirehtet(true);
+        try {
+            const res: any = await invoke('start_reverse_tethering', { device, customPath: config.scrcpyPath });
+            if (res.success) {
+                setGnirehtetActive(prev => ({ ...prev, [device]: true }));
+            } else {
+                setLogs(prev => [...prev.slice(-100), t('logs.gnirehtetStartFailed', { error: String(res.message) })]);
+            }
+            return res;
+        } catch (e: any) {
+            setLogs(prev => [...prev.slice(-100), t('logs.gnirehtetStartFailed', { error: String(e) })]);
+            return { success: false, message: e };
+        } finally {
+            setIsTogglingGnirehtet(false);
+        }
+    };
+
+    const stopReverseTethering = async (device: string) => {
+        if (!device || isTogglingGnirehtet) return;
+        setIsTogglingGnirehtet(true);
+        setGnirehtetActive(prev => {
+            if (!prev[device]) return prev;
+            const next = { ...prev };
+            delete next[device];
+            return next;
+        });
+        try {
+            await invoke('stop_reverse_tethering', { device, customPath: config.scrcpyPath });
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsTogglingGnirehtet(false);
         }
     };
 
@@ -728,6 +777,10 @@ export function useScrcpy() {
         installApk,
         historyDevices,
         clearHistory,
+        gnirehtetActive,
+        isTogglingGnirehtet,
+        startReverseTethering,
+        stopReverseTethering,
         sessionRunning: runningDevices.includes(activeDevice || ''),
         isOnboardingOpen,
         setIsOnboardingOpen,

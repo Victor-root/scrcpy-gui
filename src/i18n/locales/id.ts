@@ -209,7 +209,11 @@ export const id: Translations = {
         selectRecordingFolderTitle: 'Pilih Folder Rekaman',
         // v4 features
         keepActive: 'Tetap Aktif',
-        keepActiveTooltip: 'Mirorring dan HP tidak otomatis mati (scrcpy v4+)'
+        keepActiveTooltip: 'Mirorring dan HP tidak otomatis mati (scrcpy v4+)',
+        internetSharingSection: 'Berbagi Internet (Eksperimental)',
+        internetSharing: 'Bagikan Internet PC',
+        internetSharingTooltip: 'Reverse tethering lewat ADB (Gnirehtet). Membagikan koneksi internet komputer ini ke perangkat. Bisa dinyalakan atau dimatikan langsung, terpisah dari sesi mirroring, dan memakai ADB milik aplikasi ini sendiri.',
+        internetSharingUnavailableTooltip: 'Mulai mirroring perangkat ini dulu untuk mengaktifkan berbagi internet.'
     },
     shortcuts: {
         title: 'Pintasan (Alt +)',
@@ -308,6 +312,7 @@ export const id: Translations = {
         pushingFile: '[SISTEM] Mengirim berkas ke {device}: {filePath}...',
         installingApk: '[SISTEM] Memasang APK di {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[ERROR] Perintah gagal: {error}'
+        commandFailed: '[ERROR] Perintah gagal: {error}',
+        gnirehtetStartFailed: '[ERROR] Gagal memulai berbagi internet: {error}'
     }
 };

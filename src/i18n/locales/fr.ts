@@ -205,7 +205,11 @@ export const fr: Translations = {
         selectRecordingFolderTitle: 'Sélectionner le Dossier d\'Enregistrement',
         // v4 features
         keepActive: 'Garder Actif',
-        keepActiveTooltip: 'Simule une activité utilisateur pour empêcher l\'écran de se mettre en veille (scrcpy v4+).'
+        keepActiveTooltip: 'Simule une activité utilisateur pour empêcher l\'écran de se mettre en veille (scrcpy v4+).',
+        internetSharingSection: 'Partage Internet (Expérimental)',
+        internetSharing: 'Partager Internet du PC',
+        internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Partage la connexion internet de cet ordinateur avec l\'appareil. Démarre et s\'arrête à la volée, indépendamment de la session de mirroring, et réutilise l\'ADB propre à l\'application.',
+        internetSharingUnavailableTooltip: 'Démarrez le mirroring de cet appareil pour activer le partage internet.'
     },
     shortcuts: {
         title: 'Raccourcis (Alt +)',
@@ -304,6 +308,7 @@ export const fr: Translations = {
         pushingFile: '[SYSTEM] Envoi du fichier vers {device} : {filePath}...',
         installingApk: '[SYSTEM] Installation de l\'APK sur {device} : {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[ERROR] La commande a échoué : {error}'
+        commandFailed: '[ERROR] La commande a échoué : {error}',
+        gnirehtetStartFailed: '[ERROR] Échec du démarrage du partage internet : {error}'
     }
 };

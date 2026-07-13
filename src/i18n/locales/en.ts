@@ -207,7 +207,11 @@ export const en = {
         selectRecordingFolderTitle: 'Select Recording Folder',
         // v4 features
         keepActive: 'Keep Active',
-        keepActiveTooltip: 'Simulates user activity to prevent the screen from going idle (scrcpy v4+).'
+        keepActiveTooltip: 'Simulates user activity to prevent the screen from going idle (scrcpy v4+).',
+        internetSharingSection: 'Internet Sharing (Experimental)',
+        internetSharing: 'Share PC Internet',
+        internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Shares this computer\'s internet connection with the device. Starts and stops live, independently of the mirror session, and reuses this app\'s own ADB.',
+        internetSharingUnavailableTooltip: 'Start mirroring this device to enable internet sharing.'
     },
     shortcuts: {
         title: 'Shortcuts (Alt +)',
@@ -306,7 +310,8 @@ export const en = {
         pushingFile: '[SYSTEM] Pushing file to {device}: {filePath}...',
         installingApk: '[SYSTEM] Installing APK on {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[ERROR] Command failed: {error}'
+        commandFailed: '[ERROR] Command failed: {error}',
+        gnirehtetStartFailed: '[ERROR] Failed to start internet sharing: {error}'
     }
 };
 
