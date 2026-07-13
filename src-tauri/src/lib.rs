@@ -1,5 +1,5 @@
 mod commands;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
 use tauri::Manager;
 use tokio::process::Child;
@@ -9,6 +9,12 @@ use std::os::unix::process::CommandExt;
 
 pub struct ScrcpyState {
     pub processes: Mutex<HashMap<String, Child>>,
+}
+
+#[derive(Default)]
+pub struct GnirehtetState {
+    pub relay: Mutex<Option<Child>>,
+    pub active_devices: Mutex<HashSet<String>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -55,13 +61,14 @@ pub fn run() {
         }
     }
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             app.manage(ScrcpyState {
                 processes: Mutex::new(HashMap::new()),
             });
+            app.manage(GnirehtetState::default());
 
             // Show splashscreen instantly
             if let Some(splash_window) = app.get_webview_window("splashscreen") {
@@ -91,11 +98,26 @@ pub fn run() {
             commands::get_scrcpy_bin_dir,
             commands::run_terminal_command,
             commands::check_scrcpy_update,
+            commands::check_gnirehtet,
+            commands::start_reverse_tethering,
+            commands::stop_reverse_tethering,
             close_splashscreen,
             get_app_version
         ])
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("error while running tauri application");
+
+    app.run(|app_handle, event| {
+        // Internet sharing must never outlive the app itself: if the relay
+        // server is still running when the app exits, kill it here.
+        if let tauri::RunEvent::Exit = event {
+            let gnirehtet_state = app_handle.state::<GnirehtetState>();
+            let relay_child = gnirehtet_state.relay.lock().unwrap().take();
+            if let Some(mut child) = relay_child {
+                let _ = child.start_kill();
+            }
+        }
+    });
 }
 
 #[tauri::command]

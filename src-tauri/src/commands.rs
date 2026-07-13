@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use serde_json::json;
-use crate::ScrcpyState;
+use crate::{ScrcpyState, GnirehtetState};
 use tokio::process::Command as TokioCommand;
 use tokio::io::{BufReader, AsyncBufReadExt};
 use tokio::time::{timeout, Duration};
@@ -1184,6 +1184,11 @@ pub async fn run_scrcpy(window: Window, state: State<'_, ScrcpyState>, config: S
                 }
             }
         }
+
+        // Session is over one way or another: make sure internet sharing
+        // does not keep running for a device that is no longer mirrored.
+        let gnirehtet_state = app_handle_mon.state::<GnirehtetState>();
+        deactivate_gnirehtet_device(&window_mon, &gnirehtet_state, &device_mon, config_mon.scrcpy_path.clone()).await;
     });
 
     Ok(())
@@ -1458,6 +1463,175 @@ pub async fn stop_scrcpy(state: State<'_, ScrcpyState>, device: String) -> Resul
             let _ = c.kill().await;
         }
     }
+    Ok(())
+}
+
+// The gnirehtet binary resolves gnirehtet.apk relative to its current
+// working directory, not its own executable path, so "install" would
+// silently fail to find the bundled apk unless we override its location
+// through this environment variable (supported since gnirehtet-rust).
+fn gnirehtet_command(gnirehtet_path: &str, adb_path: &str) -> TokioCommand {
+    let mut cmd = create_command(gnirehtet_path);
+    cmd.env("ADB", adb_path);
+    if let Some(parent) = Path::new(gnirehtet_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            cmd.env("GNIREHTET_APK", parent.join("gnirehtet.apk"));
+        }
+    }
+    cmd
+}
+
+fn pipe_gnirehtet_output(
+    window: &Window,
+    stdout: Option<tokio::process::ChildStdout>,
+    stderr: Option<tokio::process::ChildStderr>,
+) {
+    if let Some(stdout) = stdout {
+        let window = window.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", line));
+            }
+        });
+    }
+    if let Some(stderr) = stderr {
+        let window = window.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", line));
+            }
+        });
+    }
+}
+
+// Stops reverse tethering for a single device and, once no device still
+// uses it, tears down the shared relay server. Shared by the explicit
+// stop_reverse_tethering command and by run_scrcpy's own session monitor,
+// so internet sharing never outlives the mirror session that enabled it.
+async fn deactivate_gnirehtet_device(
+    window: &Window,
+    gnirehtet_state: &GnirehtetState,
+    device: &str,
+    custom_path: Option<String>,
+) {
+    let was_active = gnirehtet_state.active_devices.lock().unwrap().remove(device);
+    if !was_active {
+        return;
+    }
+
+    let adb_path = get_binary_path("adb", custom_path.clone());
+    let gnirehtet_path = get_binary_path("gnirehtet", custom_path);
+
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Stopping internet sharing for {}...", device));
+    let _ = gnirehtet_command(&gnirehtet_path, &adb_path)
+        .arg("stop")
+        .arg(device)
+        .output()
+        .await;
+
+    let relay_child = {
+        let still_in_use = !gnirehtet_state.active_devices.lock().unwrap().is_empty();
+        if still_in_use {
+            None
+        } else {
+            gnirehtet_state.relay.lock().unwrap().take()
+        }
+    };
+
+    if let Some(mut child) = relay_child {
+        let _ = window.emit("scrcpy-log", "[GNIREHTET] No device left using internet sharing, stopping relay server.".to_string());
+        let _ = child.kill().await;
+    }
+}
+
+#[tauri::command]
+pub async fn check_gnirehtet(custom_path: Option<String>) -> serde_json::Value {
+    let exe_path = get_binary_path("gnirehtet", custom_path);
+
+    // Unlike scrcpy/adb, gnirehtet has no --help/--version flag: an unknown
+    // argument exits 1, so probe with no arguments at all (it prints usage
+    // and exits 0 in that case).
+    let output = create_command(&exe_path)
+        .output()
+        .await;
+
+    match output {
+        Ok(o) if o.status.success() => {
+            json!({ "found": true, "message": "Gnirehtet Ready" })
+        },
+        Ok(_) => {
+            json!({ "found": false, "message": "Failed to start gnirehtet (Exit Code != 0)" })
+        },
+        Err(_) => {
+            json!({ "found": false, "message": "Gnirehtet not found" })
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn start_reverse_tethering(window: Window, state: State<'_, GnirehtetState>, device: String, custom_path: Option<String>) -> Result<serde_json::Value, String> {
+    let adb_path = get_binary_path("adb", custom_path.clone());
+    let gnirehtet_path = get_binary_path("gnirehtet", custom_path);
+
+    // Lazily start the shared relay server; several devices can reuse the same one.
+    {
+        let mut relay_guard = state.relay.lock().unwrap();
+        if relay_guard.is_none() {
+            let _ = window.emit("scrcpy-log", "[GNIREHTET] Starting relay server...".to_string());
+
+            let mut cmd = gnirehtet_command(&gnirehtet_path, &adb_path);
+            cmd.arg("relay");
+            cmd.stdout(Stdio::piped());
+            cmd.stderr(Stdio::piped());
+
+            let mut child = cmd.spawn().map_err(|e| format!("Failed to start gnirehtet relay: {}", e))?;
+            pipe_gnirehtet_output(&window, child.stdout.take(), child.stderr.take());
+            *relay_guard = Some(child);
+        }
+    }
+
+    // Give the relay a brief moment to bind its port before the client tries to reach it.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Installing client on {}...", device));
+    let install_output = gnirehtet_command(&gnirehtet_path, &adb_path)
+        .arg("install")
+        .arg(&device)
+        .output()
+        .await;
+    if let Ok(o) = &install_output {
+        let out_text = String::from_utf8_lossy(&o.stdout).trim().to_string();
+        let err_text = String::from_utf8_lossy(&o.stderr).trim().to_string();
+        if !out_text.is_empty() { let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", out_text)); }
+        if !err_text.is_empty() { let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", err_text)); }
+    }
+
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Requesting internet sharing for {}...", device));
+    let start_output = gnirehtet_command(&gnirehtet_path, &adb_path)
+        .arg("start")
+        .arg(&device)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to start gnirehtet client: {}", e))?;
+
+    if !start_output.status.success() {
+        let err_text = String::from_utf8_lossy(&start_output.stderr).trim().to_string();
+        let message = if err_text.is_empty() { "gnirehtet start failed".to_string() } else { err_text };
+        let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", message));
+        return Ok(json!({ "success": false, "message": message }));
+    }
+
+    state.active_devices.lock().unwrap().insert(device.clone());
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Internet sharing active for {}. Accept the VPN prompt on the device if shown.", device));
+
+    Ok(json!({ "success": true }))
+}
+
+#[tauri::command]
+pub async fn stop_reverse_tethering(window: Window, state: State<'_, GnirehtetState>, device: String, custom_path: Option<String>) -> Result<(), String> {
+    deactivate_gnirehtet_device(&window, &state, &device, custom_path).await;
     Ok(())
 }
 
