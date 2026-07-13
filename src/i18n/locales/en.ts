@@ -212,6 +212,7 @@ export const en = {
         internetSharing: 'Share PC Internet',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Shares this computer\'s internet connection with the device. Starts and stops live, independently of the mirror session, and reuses this app\'s own ADB.',
         internetSharingUnavailableTooltip: 'Select a connected device in the Device Hub to enable internet sharing.',
+        internetSharingWifiBlockedTooltip: 'Not available over wireless ADB: gnirehtet\'s VPN can conflict with the ADB-over-WiFi connection itself (a known upstream limitation). Connect this device over USB to use internet sharing.',
         internetSharingInstall: 'Install',
         internetSharingDownloading: '{progress}%',
         internetSharingManualInstall: 'Manual install'

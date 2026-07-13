@@ -220,6 +220,7 @@ export const ru: Translations = {
     internetSharing: 'Раздать интернет с ПК',
     internetSharingTooltip: 'Обратное подключение через ADB (Gnirehtet). Раздаёт интернет-соединение этого компьютера на устройство. Запускается и останавливается вживую, независимо от сеанса трансляции, и использует собственный ADB приложения.',
     internetSharingUnavailableTooltip: 'Выберите подключённое устройство в Хабе устройств, чтобы включить раздачу интернета.',
+    internetSharingWifiBlockedTooltip: 'Недоступно через беспроводной ADB: VPN gnirehtet может конфликтовать с самим Wi-Fi ADB-соединением (известное ограничение проекта). Подключите это устройство через USB, чтобы использовать раздачу интернета.',
     internetSharingManualInstall: 'Установка вручную',
     internetSharingInstall: 'Установить',
     internetSharingDownloading: '{progress}%',

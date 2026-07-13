@@ -378,7 +378,8 @@ function App() {
                   config={config}
                   setConfig={setConfig}
                   internetSharingActive={!!gnirehtetActive[activeDevice || '']}
-                  internetSharingAvailable={!!activeDevice && devices.includes(activeDevice)}
+                  internetSharingAvailable={!!activeDevice && devices.includes(activeDevice) && !activeDevice.includes('.')}
+                  internetSharingWifiBlocked={!!activeDevice && activeDevice.includes('.')}
                   internetSharingBusy={isTogglingGnirehtet}
                   onToggleInternetSharing={(v) => {
                     if (!activeDevice) return;

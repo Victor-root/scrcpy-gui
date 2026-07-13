@@ -214,6 +214,7 @@ export const id: Translations = {
         internetSharing: 'Bagikan Internet PC',
         internetSharingTooltip: 'Reverse tethering lewat ADB (Gnirehtet). Membagikan koneksi internet komputer ini ke perangkat. Bisa dinyalakan atau dimatikan langsung, terpisah dari sesi mirroring, dan memakai ADB milik aplikasi ini sendiri.',
         internetSharingUnavailableTooltip: 'Pilih perangkat yang terhubung di Hub Perangkat untuk mengaktifkan berbagi internet.',
+        internetSharingWifiBlockedTooltip: 'Tidak tersedia lewat ADB nirkabel: VPN gnirehtet bisa bentrok dengan koneksi ADB WiFi itu sendiri (keterbatasan yang sudah diketahui dari proyek aslinya). Sambungkan perangkat ini lewat USB untuk memakai berbagi internet.',
         internetSharingManualInstall: 'Instal manual',
         internetSharingInstall: 'Instal',
         internetSharingDownloading: '{progress}%'

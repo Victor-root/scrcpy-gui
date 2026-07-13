@@ -13,6 +13,7 @@ interface SessionBehaviorProps {
     setConfig: (c: ScrcpyConfig) => void;
     internetSharingActive: boolean;
     internetSharingAvailable: boolean;
+    internetSharingWifiBlocked: boolean;
     internetSharingBusy: boolean;
     onToggleInternetSharing: (v: boolean) => void;
     gnirehtetFound: boolean;
@@ -27,6 +28,7 @@ export default function SessionBehavior({
     setConfig,
     internetSharingActive,
     internetSharingAvailable,
+    internetSharingWifiBlocked,
     internetSharingBusy,
     onToggleInternetSharing,
     gnirehtetFound,
@@ -234,7 +236,13 @@ export default function SessionBehavior({
                                 onChange={onToggleInternetSharing}
                                 icon={Wifi}
                                 label={t('sessionBehavior.internetSharing')}
-                                tooltip={internetSharingAvailable ? t('sessionBehavior.internetSharingTooltip') : t('sessionBehavior.internetSharingUnavailableTooltip')}
+                                tooltip={
+                                    internetSharingAvailable
+                                        ? t('sessionBehavior.internetSharingTooltip')
+                                        : internetSharingWifiBlocked
+                                            ? t('sessionBehavior.internetSharingWifiBlockedTooltip')
+                                            : t('sessionBehavior.internetSharingUnavailableTooltip')
+                                }
                             />
                         </div>
                     ) : (

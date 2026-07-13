@@ -210,6 +210,7 @@ export const fr: Translations = {
         internetSharing: 'Partager Internet du PC',
         internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Partage la connexion internet de cet ordinateur avec l\'appareil. Démarre et s\'arrête à la volée, indépendamment de la session de mirroring, et réutilise l\'ADB propre à l\'application.',
         internetSharingUnavailableTooltip: 'Sélectionnez un appareil connecté dans le Hub d\'appareils pour activer le partage internet.',
+        internetSharingWifiBlockedTooltip: 'Indisponible en ADB sans fil : le VPN de gnirehtet peut entrer en conflit avec la connexion ADB Wi-Fi elle-même (limitation connue en amont). Connectez cet appareil en USB pour utiliser le partage internet.',
         internetSharingManualInstall: 'Installation manuelle',
         internetSharingInstall: 'Installer',
         internetSharingDownloading: '{progress}%'

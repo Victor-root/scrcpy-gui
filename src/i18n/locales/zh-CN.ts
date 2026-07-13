@@ -214,6 +214,7 @@ export const zhCN: Translations = {
         internetSharing: '共享电脑网络',
         internetSharingTooltip: '通过 ADB 进行反向网络共享（Gnirehtet）。将本机的网络连接共享给设备。可实时启动或停止，独立于镜像会话，并复用本应用自身的 ADB。',
         internetSharingUnavailableTooltip: '请在设备中心选择一个已连接的设备，才能启用网络共享。',
+        internetSharingWifiBlockedTooltip: '无线 ADB 下不可用：gnirehtet 的 VPN 可能与 WiFi ADB 连接本身冲突（上游项目已知的限制）。请通过 USB 连接此设备以使用网络共享。',
         internetSharingManualInstall: '手动安装',
         internetSharingInstall: '安装',
         internetSharingDownloading: '{progress}%'
