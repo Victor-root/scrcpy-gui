@@ -1481,16 +1481,26 @@ fn gnirehtet_command(gnirehtet_path: &str, adb_path: &str) -> TokioCommand {
     cmd
 }
 
+// Forwards the relay's own output to the log panel. When `ready` is set, also
+// watches for the relay's "Relay server started" line and wakes up any
+// waiter as soon as it appears, instead of guessing with a fixed delay.
 fn pipe_gnirehtet_output(
     window: &Window,
     stdout: Option<tokio::process::ChildStdout>,
     stderr: Option<tokio::process::ChildStderr>,
+    ready: Option<Arc<tokio::sync::Notify>>,
 ) {
     if let Some(stdout) = stdout {
         let window = window.clone();
+        let ready = ready.clone();
         tokio::spawn(async move {
             let mut lines = BufReader::new(stdout).lines();
             while let Ok(Some(line)) = lines.next_line().await {
+                if let Some(ready) = &ready {
+                    if line.contains("Relay server started") {
+                        ready.notify_one();
+                    }
+                }
                 let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", line));
             }
         });
@@ -1500,6 +1510,11 @@ fn pipe_gnirehtet_output(
         tokio::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
+                if let Some(ready) = &ready {
+                    if line.contains("Relay server started") {
+                        ready.notify_one();
+                    }
+                }
                 let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", line));
             }
         });
@@ -1571,29 +1586,83 @@ pub async fn check_gnirehtet(custom_path: Option<String>) -> serde_json::Value {
 }
 
 #[tauri::command]
-pub async fn start_reverse_tethering(window: Window, state: State<'_, GnirehtetState>, device: String, custom_path: Option<String>) -> Result<serde_json::Value, String> {
+pub async fn start_reverse_tethering(window: Window, state: State<'_, GnirehtetState>, app_handle: tauri::AppHandle, device: String, custom_path: Option<String>) -> Result<serde_json::Value, String> {
     let adb_path = get_binary_path("adb", custom_path.clone());
     let gnirehtet_path = get_binary_path("gnirehtet", custom_path);
 
-    // Lazily start the shared relay server; several devices can reuse the same one.
-    {
+    // Lazily start the shared relay server; several devices can reuse the same
+    // one. If a previous relay process has died without us noticing (e.g. it
+    // crashed), treat it as absent so a fresh one gets spawned instead of
+    // silently trying to talk to a dead process.
+    let should_spawn_relay = {
         let mut relay_guard = state.relay.lock().unwrap();
-        if relay_guard.is_none() {
-            let _ = window.emit("scrcpy-log", "[GNIREHTET] Starting relay server...".to_string());
-
-            let mut cmd = gnirehtet_command(&gnirehtet_path, &adb_path);
-            cmd.arg("relay");
-            cmd.stdout(Stdio::piped());
-            cmd.stderr(Stdio::piped());
-
-            let mut child = cmd.spawn().map_err(|e| format!("Failed to start gnirehtet relay: {}", e))?;
-            pipe_gnirehtet_output(&window, child.stdout.take(), child.stderr.take());
-            *relay_guard = Some(child);
+        let is_dead = match relay_guard.as_mut() {
+            Some(child) => matches!(child.try_wait(), Ok(Some(_)) | Err(_)),
+            None => false,
+        };
+        if is_dead {
+            *relay_guard = None;
         }
-    }
+        relay_guard.is_none()
+    };
 
-    // Give the relay a brief moment to bind its port before the client tries to reach it.
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    if should_spawn_relay {
+        let _ = window.emit("scrcpy-log", "[GNIREHTET] Starting relay server...".to_string());
+
+        let mut cmd = gnirehtet_command(&gnirehtet_path, &adb_path);
+        cmd.arg("relay");
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
+
+        let mut child = cmd.spawn().map_err(|e| format!("Failed to start gnirehtet relay: {}", e))?;
+        let ready = Arc::new(tokio::sync::Notify::new());
+        pipe_gnirehtet_output(&window, child.stdout.take(), child.stderr.take(), Some(ready.clone()));
+        *state.relay.lock().unwrap() = Some(child);
+
+        // Wait for the relay's own readiness line instead of guessing with a
+        // fixed delay; bounded so a wording change upstream can never hang this.
+        if tokio::time::timeout(Duration::from_secs(3), ready.notified()).await.is_err() {
+            let _ = window.emit("scrcpy-log", "[GNIREHTET] Relay did not confirm readiness in time, continuing anyway...".to_string());
+        }
+
+        // Supervise the relay in the background: if it dies while devices are
+        // still using it, clear their state instead of leaving the UI stuck
+        // showing internet sharing as active.
+        let app_handle_mon = app_handle.clone();
+        let window_mon = window.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                let gnirehtet_state = app_handle_mon.state::<GnirehtetState>();
+                let died = {
+                    let mut relay_guard = gnirehtet_state.relay.lock().unwrap();
+                    match relay_guard.as_mut() {
+                        Some(child) => match child.try_wait() {
+                            Ok(Some(_)) | Err(_) => {
+                                *relay_guard = None;
+                                true
+                            }
+                            Ok(None) => false,
+                        },
+                        None => true,
+                    }
+                };
+                if died {
+                    let had_active = {
+                        let mut active = gnirehtet_state.active_devices.lock().unwrap();
+                        let was_nonempty = !active.is_empty();
+                        active.clear();
+                        was_nonempty
+                    };
+                    if had_active {
+                        let _ = window_mon.emit("scrcpy-log", "[GNIREHTET] Relay server stopped unexpectedly, internet sharing disabled.".to_string());
+                        let _ = window_mon.emit("scrcpy-status", json!({ "type": "gnirehtet-relay-down" }));
+                    }
+                    break;
+                }
+            }
+        });
+    }
 
     let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Installing client on {}...", device));
     let install_output = gnirehtet_command(&gnirehtet_path, &adb_path)
