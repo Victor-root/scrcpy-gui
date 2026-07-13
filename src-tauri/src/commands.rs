@@ -1184,11 +1184,6 @@ pub async fn run_scrcpy(window: Window, state: State<'_, ScrcpyState>, config: S
                 }
             }
         }
-
-        // Session is over one way or another: make sure internet sharing
-        // does not keep running for a device that is no longer mirrored.
-        let gnirehtet_state = app_handle_mon.state::<GnirehtetState>();
-        deactivate_gnirehtet_device(&window_mon, &gnirehtet_state, &device_mon, config_mon.scrcpy_path.clone()).await;
     });
 
     Ok(())
@@ -1522,9 +1517,10 @@ fn pipe_gnirehtet_output(
 }
 
 // Stops reverse tethering for a single device and, once no device still
-// uses it, tears down the shared relay server. Shared by the explicit
-// stop_reverse_tethering command and by run_scrcpy's own session monitor,
-// so internet sharing never outlives the mirror session that enabled it.
+// uses it, tears down the shared relay server. Internet sharing is
+// independent of any mirror session, so this only runs from an explicit
+// stop_reverse_tethering call (or when a device disconnects, from the
+// frontend) rather than being tied to run_scrcpy's lifecycle.
 async fn deactivate_gnirehtet_device(
     window: &Window,
     gnirehtet_state: &GnirehtetState,
