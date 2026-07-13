@@ -1704,6 +1704,29 @@ pub async fn stop_reverse_tethering(window: Window, state: State<'_, GnirehtetSt
     Ok(())
 }
 
+fn sha256_hex(path: &Path) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+// SHA256SUMS.txt lines look like "<hexhash>  <filename>" (sha256sum's default
+// text-mode format), occasionally with a leading '*' before the name in
+// binary mode.
+fn parse_sha256_for_file<'a>(sums_text: &'a str, filename: &str) -> Option<&'a str> {
+    for line in sums_text.lines() {
+        let mut parts = line.split_whitespace();
+        let hash = parts.next()?;
+        let name = parts.next()?.trim_start_matches('*');
+        if name == filename {
+            return Some(hash);
+        }
+    }
+    None
+}
+
 #[tauri::command]
 pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
     use std::io::Write;
@@ -1724,6 +1747,7 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
 
     let mut download_url = String::new();
     let mut filename = String::new();
+    let mut checksums_url = String::new();
 
     let api_url = "https://api.github.com/repos/Genymobile/gnirehtet/releases/latest";
     let api_resp = client.get(api_url).send().await;
@@ -1739,7 +1763,8 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
                         if name.starts_with(&format!("gnirehtet-rust-{}-", arch_tag)) && name.ends_with(".zip") {
                             download_url = asset["browser_download_url"].as_str().unwrap_or("").to_string();
                             filename = name.to_string();
-                            break;
+                        } else if name.eq_ignore_ascii_case("SHA256SUMS.txt") {
+                            checksums_url = asset["browser_download_url"].as_str().unwrap_or("").to_string();
                         }
                     }
                 }
@@ -1761,6 +1786,7 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
             if tag.starts_with('v') {
                 filename = format!("gnirehtet-rust-{}-{}.zip", arch_tag, tag);
                 download_url = format!("https://github.com/Genymobile/gnirehtet/releases/download/{}/{}", tag, filename);
+                checksums_url = format!("https://github.com/Genymobile/gnirehtet/releases/download/{}/SHA256SUMS.txt", tag);
                 window.emit("scrcpy-log", format!("[GNIREHTET] Discovered latest tag via fallback: {}", tag)).unwrap();
             }
         }
@@ -1801,7 +1827,42 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
         }
     }
 
-    window.emit("scrcpy-log", "[GNIREHTET] Download finished. Starting extraction...").unwrap();
+    window.emit("scrcpy-log", "[GNIREHTET] Download finished. Verifying checksum...").unwrap();
+
+    if checksums_url.is_empty() {
+        window.emit("scrcpy-log", "[GNIREHTET] No checksum file found for this release, skipping verification.").unwrap();
+    } else {
+        match client.get(&checksums_url).send().await {
+            Ok(resp) => match resp.text().await {
+                Ok(text) => match parse_sha256_for_file(&text, &filename) {
+                    Some(expected_hash) => match sha256_hex(&temp_archive_path) {
+                        Ok(actual_hash) => {
+                            if actual_hash.eq_ignore_ascii_case(expected_hash) {
+                                window.emit("scrcpy-log", "[GNIREHTET] Checksum verified.").unwrap();
+                            } else {
+                                let _ = std::fs::remove_file(&temp_archive_path);
+                                return Err("Checksum verification failed: the downloaded file does not match SHA256SUMS.txt. Aborting install.".to_string());
+                            }
+                        }
+                        Err(e) => {
+                            window.emit("scrcpy-log", format!("[GNIREHTET] Could not compute checksum: {}", e)).unwrap();
+                        }
+                    },
+                    None => {
+                        window.emit("scrcpy-log", "[GNIREHTET] Checksum entry not found for this asset, skipping verification.").unwrap();
+                    }
+                },
+                Err(_) => {
+                    window.emit("scrcpy-log", "[GNIREHTET] Could not read checksum file, skipping verification.").unwrap();
+                }
+            },
+            Err(_) => {
+                window.emit("scrcpy-log", "[GNIREHTET] Could not fetch checksum file, skipping verification.").unwrap();
+            }
+        }
+    }
+
+    window.emit("scrcpy-log", "[GNIREHTET] Starting extraction...").unwrap();
     window.emit("scrcpy-status", json!({ "type": "downloading-gnirehtet", "success": true, "message": "Extracting binaries..." })).unwrap();
 
     let temp_extract_dir = current_dir.join("gnirehtet_temp_extract");
