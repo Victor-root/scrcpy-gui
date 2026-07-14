@@ -17,9 +17,8 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-use tauri::plugin::TauriPlugin;
 use tauri::{AppHandle, Manager, Runtime};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
@@ -43,34 +42,24 @@ static GRAB_ACTIVE: AtomicBool = AtomicBool::new(false);
 // system-wide while registered), so it is deliberately an uncommon four-key
 // chord that steers clear of scrcpy's own shortcuts (all MOD(Alt/Super)+key)
 // and the GUI's (none).
-fn toggle_shortcut() -> Shortcut {
+pub fn toggle_shortcut() -> Shortcut {
     Shortcut::new(
         Some(Modifiers::CONTROL | Modifiers::ALT | Modifiers::SHIFT),
         Code::KeyW,
     )
 }
 
-/// The global-shortcut plugin, wired to toggle the grab. Add this on the Tauri
-/// builder (its setup wires the OS hotkey manager on the main thread).
-pub fn plugin<R: Runtime>() -> TauriPlugin<R> {
-    tauri_plugin_global_shortcut::Builder::new()
-        .with_handler(|_app, _shortcut, event| {
-            // Only one shortcut is ever registered here, so any pressed event is
-            // ours. Toggle on the key-down edge only.
-            if event.state() == ShortcutState::Pressed {
-                GRAB_ACTIVE.fetch_xor(true, Ordering::SeqCst);
-            }
-        })
-        .build()
+/// Flip the grab on/off. Called from `shortcuts.rs`'s shared global-shortcut
+/// handler on the key-down edge of [`toggle_shortcut`].
+pub fn toggle() {
+    GRAB_ACTIVE.fetch_xor(true, Ordering::SeqCst);
 }
 
-/// Register the shortcut and start the follow thread. Call from the app's
-/// `setup` (main thread).
-pub fn register<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
-    app.global_shortcut().register(toggle_shortcut())?;
+/// Start the follow thread. Call from the app's `setup` (main thread); the
+/// shortcut itself is registered by `shortcuts.rs`.
+pub fn register<R: Runtime>(app: &AppHandle<R>) {
     let handle = app.clone();
     std::thread::spawn(move || follow_loop(handle));
-    Ok(())
 }
 
 /// Background loop: while a grab is active, keep the grabbed window under the

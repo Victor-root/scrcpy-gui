@@ -201,7 +201,7 @@ languages: {
         fullScreen: 'Layar Penuh',
         fullScreenTooltip: 'Jalankan scrcpy dalam mode layar penuh.',
         borderless: 'Tanpa Border',
-        borderlessTooltip: 'Jalankan scrcpy tanpa bingkai jendela. Posisi diingat antar sesi. Untuk memindahkan jendela: Ctrl+Alt+Shift+W di Windows, Super/Meta+seret di GNOME/KDE.',
+        borderlessTooltip: 'Jalankan scrcpy tanpa bingkai jendela. Posisi diingat antar sesi. Untuk memindahkan jendela: Ctrl+Alt+Shift+W di Windows, Super/Meta+seret di GNOME/KDE. Jika jendela sampai keluar dari layar, tekan Ctrl+Alt+Shift+C untuk mengembalikannya ke tengah.',
         rememberWindowPosition: 'Ingat Posisi Jendela',
         rememberWindowPositionTooltip: 'Buka kembali jendela mirroring di posisi terakhir. Nonaktifkan jika Anda sering mengganti resolusi -- ini bisa mengacaukan posisi yang tersimpan. Jika jendela sampai keluar dari layar, tekan Ctrl+Alt+Shift+C untuk mengembalikannya ke tengah.',
         recordFeed: 'Rekam Layar',

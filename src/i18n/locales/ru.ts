@@ -207,7 +207,7 @@ export const ru: Translations = {
     fullScreen: 'Полный экран',
     fullScreenTooltip: 'Запускать scrcpy в полноэкранном режиме.',
     borderless: 'Без рамок',
-    borderlessTooltip: 'Запускать scrcpy без рамки окна. Позиция запоминается между сессиями. Чтобы переместить окно: Ctrl+Alt+Shift+W в Windows, Super/Meta+перетаскивание в GNOME/KDE.',
+    borderlessTooltip: 'Запускать scrcpy без рамки окна. Позиция запоминается между сессиями. Чтобы переместить окно: Ctrl+Alt+Shift+W в Windows, Super/Meta+перетаскивание в GNOME/KDE. Если окно окажется за пределами экрана, нажмите Ctrl+Alt+Shift+C, чтобы вернуть его по центру.',
     rememberWindowPosition: 'Запоминать позицию окна',
     rememberWindowPositionTooltip: 'Открывать окно трансляции там же, где оно было в прошлый раз. Отключите, если вы часто меняете разрешение -- это может сбить сохранённую позицию. Если окно окажется за пределами экрана, нажмите Ctrl+Alt+Shift+C, чтобы вернуть его по центру.',
     recordFeed: 'Записывать поток',

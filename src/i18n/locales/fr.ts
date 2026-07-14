@@ -201,7 +201,7 @@ export const fr: Translations = {
         fullScreen: 'Plein Écran',
         fullScreenTooltip: 'Lance scrcpy en mode plein écran.',
         borderless: 'Sans Bordures',
-        borderlessTooltip: 'Lance scrcpy sans bordures de fenêtre. La position est mémorisée entre les sessions. Pour déplacer la fenêtre : Ctrl+Alt+Shift+W sous Windows, Super/Meta+glisser sous GNOME/KDE.',
+        borderlessTooltip: 'Lance scrcpy sans bordures de fenêtre. La position est mémorisée entre les sessions. Pour déplacer la fenêtre : Ctrl+Alt+Shift+W sous Windows, Super/Meta+glisser sous GNOME/KDE. Si jamais elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
         rememberWindowPosition: 'Mémoriser la position de la fenêtre',
         rememberWindowPositionTooltip: 'Rouvre la fenêtre de mirroring au même endroit que la dernière fois. Désactivez si vous changez souvent de résolution, ça peut sinon perturber la position enregistrée. Si elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
         recordFeed: 'Enregistrer le Flux',

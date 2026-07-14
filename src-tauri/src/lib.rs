@@ -3,6 +3,9 @@ mod commands;
 // (Ctrl+Alt+Shift+W).
 #[cfg(target_os = "windows")]
 mod grab;
+// Cross-platform global OS shortcuts (e.g. Ctrl+Alt+Shift+C to recentre the
+// active mirror window), shared with grab.rs's Windows-only drag toggle.
+mod shortcuts;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::Manager;
@@ -13,6 +16,7 @@ use std::os::unix::process::CommandExt;
 
 pub struct ScrcpyState {
     pub processes: Mutex<HashMap<String, Child>>,
+    pub active_device: Mutex<Option<String>>,
     /// A raw window position captured by `stop_scrcpy` right before it kills
     /// the process (the window is still exactly where the user left it at
     /// that instant), handed off to the run_scrcpy monitor loop so it can
@@ -68,27 +72,30 @@ pub fn run() {
 
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_dialog::init());
-
-    // Windows-only: the global-shortcut plugin must be registered on the builder
-    // (its setup wires the OS hotkey manager on the main thread). The shortcut
-    // itself is registered below in setup.
-    #[cfg(target_os = "windows")]
-    let builder = builder.plugin(grab::plugin());
+        .plugin(tauri_plugin_dialog::init())
+        // The global-shortcut plugin must be registered on the builder (its
+        // setup wires the OS hotkey manager on the main thread). Individual
+        // shortcuts are registered below in setup.
+        .plugin(shortcuts::plugin());
 
     builder
         .setup(|app| {
             app.manage(ScrcpyState {
                 processes: Mutex::new(HashMap::new()),
+                active_device: Mutex::new(None),
                 final_capture_hint: Mutex::new(HashMap::new()),
             });
 
-            // Windows-only: enable Ctrl+Alt+Shift+W to drag the borderless
-            // scrcpy window with the mouse. Non-fatal if it fails to register.
-            #[cfg(target_os = "windows")]
-            if let Err(e) = grab::register(app.handle()) {
-                eprintln!("[grab] failed to register window-move shortcut: {e}");
+            // Ctrl+Alt+Shift+C (recentre the active mirror window) on every
+            // platform, plus Ctrl+Alt+Shift+W (drag the borderless window) on
+            // Windows. Non-fatal if a shortcut fails to register.
+            if let Err(e) = shortcuts::register(app.handle()) {
+                eprintln!("[shortcuts] failed to register global shortcuts: {e}");
             }
+
+            // Windows-only: start the drag-follow thread backing Ctrl+Alt+Shift+W.
+            #[cfg(target_os = "windows")]
+            grab::register(app.handle());
 
             // Show splashscreen instantly
             if let Some(splash_window) = app.get_webview_window("splashscreen") {
@@ -110,6 +117,8 @@ pub fn run() {
             commands::kill_adb,
             commands::run_scrcpy,
             commands::stop_scrcpy,
+            commands::recenter_scrcpy_window,
+            commands::set_active_device,
             commands::download_scrcpy,
             commands::list_scrcpy_options,
             commands::get_render_drivers,

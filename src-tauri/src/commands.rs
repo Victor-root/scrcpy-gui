@@ -758,6 +758,56 @@ fn parse_shell_var_int(text: &str, key: &str) -> Option<i32> {
         .and_then(|l| l[prefix.len()..].trim().parse().ok())
 }
 
+/// Windows: finds the first visible, unowned top-level window belonging to
+/// process `pid` (matches .NET's `MainWindowHandle` heuristic), i.e. scrcpy's
+/// SDL mirror window rather than some owned tool/popup window. Shared by the
+/// position-capture and recenter paths so both agree on which window they
+/// mean.
+#[cfg(target_os = "windows")]
+fn find_window_by_pid(pid: u32) -> Option<windows::Win32::Foundation::HWND> {
+    use windows::core::BOOL;
+    use windows::Win32::Foundation::{HWND, LPARAM};
+    use windows::Win32::UI::WindowsAndMessaging::{
+        EnumWindows, GetWindow, GetWindowThreadProcessId, IsWindowVisible, GW_OWNER,
+    };
+
+    // State threaded through EnumWindows via LPARAM.
+    struct Search {
+        target_pid: u32,
+        found: HWND,
+    }
+
+    // WNDENUMPROC: BOOL(1) keeps enumerating, BOOL(0) stops.
+    unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        let search = &mut *(lparam.0 as *mut Search);
+        if !IsWindowVisible(hwnd).as_bool() {
+            return BOOL(1);
+        }
+        if GetWindow(hwnd, GW_OWNER).map(|o| !o.0.is_null()).unwrap_or(false) {
+            return BOOL(1);
+        }
+        let mut wnd_pid: u32 = 0;
+        let _ = GetWindowThreadProcessId(hwnd, Some(&mut wnd_pid as *mut u32));
+        if wnd_pid == search.target_pid {
+            search.found = hwnd;
+            return BOOL(0); // found it -> stop enumeration
+        }
+        BOOL(1)
+    }
+
+    let mut search = Search {
+        target_pid: pid,
+        found: HWND::default(),
+    };
+    // EnumWindows returns Err both on real failure and when the callback
+    // returns BOOL(0) (our intentional early stop), so ignore the Result and
+    // read the captured handle instead.
+    unsafe {
+        let _ = EnumWindows(Some(enum_proc), LPARAM(&mut search as *mut Search as isize));
+    }
+    (!search.found.0.is_null()).then_some(search.found)
+}
+
 /// Queries the on-screen position of the scrcpy SDL window owned by process
 /// `pid`, returning the client-area top-left in screen pixels. Returns `None`
 /// silently whenever the window can't be read (not created yet, minimized,
@@ -772,56 +822,14 @@ fn parse_shell_var_int(text: &str, key: &str) -> Option<i32> {
 fn try_capture_window_pos(pid: u32) -> Option<(i32, i32)> {
     #[cfg(target_os = "windows")]
     {
-        // Native Win32: find this PID's main window and read its client-area
-        // origin. This replaces spawning PowerShell + `Add-Type` (a C# JIT) on
-        // every poll, it is a couple of direct syscalls with no child process.
-        use windows::core::BOOL;
-        use windows::Win32::Foundation::{HWND, LPARAM, POINT};
+        // Native Win32: this replaces spawning PowerShell + `Add-Type` (a C#
+        // JIT) on every poll, it is a couple of direct syscalls with no child
+        // process.
+        use windows::Win32::Foundation::POINT;
         use windows::Win32::Graphics::Gdi::ClientToScreen;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            EnumWindows, GetWindow, GetWindowThreadProcessId, IsIconic, IsWindowVisible, IsZoomed,
-            GW_OWNER,
-        };
+        use windows::Win32::UI::WindowsAndMessaging::{IsIconic, IsZoomed};
 
-        // State threaded through EnumWindows via LPARAM.
-        struct Search {
-            target_pid: u32,
-            found: HWND,
-        }
-
-        // WNDENUMPROC: BOOL(1) keeps enumerating, BOOL(0) stops.
-        unsafe extern "system" fn enum_proc(hwnd: HWND, lparam: LPARAM) -> BOOL {
-            let search = &mut *(lparam.0 as *mut Search);
-            // Match .NET's MainWindowHandle heuristic: the first visible, unowned
-            // top-level window of the process, i.e. scrcpy's SDL mirror window,
-            // not an owned tool/popup window.
-            if !IsWindowVisible(hwnd).as_bool() {
-                return BOOL(1);
-            }
-            if GetWindow(hwnd, GW_OWNER).map(|o| !o.0.is_null()).unwrap_or(false) {
-                return BOOL(1);
-            }
-            let mut wnd_pid: u32 = 0;
-            let _ = GetWindowThreadProcessId(hwnd, Some(&mut wnd_pid as *mut u32));
-            if wnd_pid == search.target_pid {
-                search.found = hwnd;
-                return BOOL(0); // found it -> stop enumeration
-            }
-            BOOL(1)
-        }
-
-        let mut search = Search {
-            target_pid: pid,
-            found: HWND::default(),
-        };
-        // EnumWindows returns Err both on real failure and when the callback
-        // returns BOOL(0) (our intentional early stop), so ignore the Result
-        // and read the captured handle instead.
-        unsafe {
-            let _ = EnumWindows(Some(enum_proc), LPARAM(&mut search as *mut Search as isize));
-        }
-        let hwnd = search.found;
-        if !hwnd.0.is_null() {
+        if let Some(hwnd) = find_window_by_pid(pid) {
             // A minimized window reports an off-screen sentinel origin
             // (~ -32000,-32000) and a maximized one the monitor edge; neither is
             // the windowed position we want, so skip them and keep the last good
@@ -885,6 +893,148 @@ fn try_capture_window_pos(pid: u32) -> Option<(i32, i32)> {
     #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
     let _ = pid;
     None
+}
+
+/// Moves the scrcpy mirror window owned by `pid` to the centre of the primary
+/// screen and brings it to the front. A safety net for a persisted position
+/// that no longer lands on any connected monitor (e.g. it was saved while a
+/// second monitor was attached, which has since been unplugged) -- the window
+/// can reopen fully off-screen, with no title bar to drag back if borderless.
+/// Best-effort and silent: does nothing if the window can't be found, is
+/// already maximized (it fills its monitor; there is nothing to recover), or
+/// the move fails.
+fn recenter_window(pid: u32) {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Foundation::RECT;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetSystemMetrics, GetWindowRect, IsIconic, IsZoomed, SetForegroundWindow,
+            SetWindowPos, ShowWindow, SM_CXSCREEN, SM_CYSCREEN, SWP_NOSIZE, SWP_NOZORDER,
+            SW_RESTORE,
+        };
+
+        let Some(hwnd) = find_window_by_pid(pid) else {
+            return;
+        };
+        if unsafe { IsZoomed(hwnd) }.as_bool() {
+            return;
+        }
+        if unsafe { IsIconic(hwnd) }.as_bool() {
+            let _ = unsafe { ShowWindow(hwnd, SW_RESTORE) };
+        }
+        let mut rect = RECT::default();
+        if unsafe { GetWindowRect(hwnd, &mut rect) }.is_err() {
+            return;
+        }
+        let (w, h) = (rect.right - rect.left, rect.bottom - rect.top);
+        let (screen_w, screen_h) =
+            unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) };
+        let _ = unsafe {
+            SetWindowPos(
+                hwnd,
+                None,
+                (screen_w - w) / 2,
+                (screen_h - h) / 2,
+                0,
+                0,
+                SWP_NOSIZE | SWP_NOZORDER,
+            )
+        };
+        let _ = unsafe { SetForegroundWindow(hwnd) };
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let pid_str = pid.to_string();
+        let Ok(search_out) = StdCommand::new("xdotool").args(["search", "--pid", &pid_str]).output() else {
+            return;
+        };
+        let Some(window_id) = String::from_utf8_lossy(&search_out.stdout).lines().next().map(str::to_string) else {
+            return;
+        };
+
+        let Ok(geom_out) = StdCommand::new("xdotool")
+            .args(["getwindowgeometry", "--shell", &window_id])
+            .output()
+        else {
+            return;
+        };
+        let geom_text = String::from_utf8_lossy(&geom_out.stdout);
+        let (Some(w), Some(h)) = (
+            parse_shell_var_int(&geom_text, "WIDTH"),
+            parse_shell_var_int(&geom_text, "HEIGHT"),
+        ) else {
+            return;
+        };
+
+        let Ok(display_out) = StdCommand::new("xdotool").arg("getdisplaygeometry").output() else {
+            return;
+        };
+        let display_text = String::from_utf8_lossy(&display_out.stdout);
+        let mut parts = display_text.split_whitespace();
+        let (Some(Ok(screen_w)), Some(Ok(screen_h))) = (
+            parts.next().map(str::parse::<i32>),
+            parts.next().map(str::parse::<i32>),
+        ) else {
+            return;
+        };
+
+        let x = ((screen_w - w).max(0) / 2).to_string();
+        let y = ((screen_h - h).max(0) / 2).to_string();
+        let _ = StdCommand::new("xdotool").args(["windowmove", &window_id, &x, &y]).output();
+        let _ = StdCommand::new("xdotool").args(["windowactivate", &window_id]).output();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // Same Accessibility-permission requirement as the position capture
+        // above; a silent no-op until it is granted.
+        let script = format!(
+            concat!(
+                "tell application \"System Events\"\n",
+                "try\n",
+                "set proc to first process whose unix id is {}\n",
+                "set win to first window of proc\n",
+                "set {{winW, winH}} to size of win\n",
+                "tell application \"Finder\" to set screenBounds to bounds of window of desktop\n",
+                "set screenW to (item 3 of screenBounds)\n",
+                "set screenH to (item 4 of screenBounds)\n",
+                "set position of win to {{((screenW - winW) / 2), ((screenH - winH) / 2)}}\n",
+                "set frontmost of proc to true\n",
+                "end try\n",
+                "end tell"
+            ),
+            pid
+        );
+        let _ = StdCommand::new("osascript").args(["-e", &script]).output();
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    let _ = pid;
+}
+
+/// Re-centres the running mirror window for `device` on the primary screen.
+/// Bound to a global OS shortcut (Ctrl+Alt+Shift+C, see `shortcuts.rs`) so a
+/// window whose saved position ends up off-screen (see [`recenter_window`])
+/// can be recovered without being able to see or focus it directly. A no-op
+/// if `device` has no tracked process (e.g. nothing is running).
+pub fn recenter_device(state: &ScrcpyState, device: &str) {
+    let pid = state.processes.lock().unwrap().get(device).and_then(|c| c.id());
+    if let Some(pid) = pid {
+        recenter_window(pid);
+    }
+}
+
+#[tauri::command]
+pub fn recenter_scrcpy_window(state: State<'_, ScrcpyState>, device: String) -> Result<(), String> {
+    recenter_device(&state, &device);
+    Ok(())
+}
+
+/// Records which device the GUI currently considers selected, so the global
+/// recentre shortcut (which fires with no window necessarily focused) knows
+/// which mirror window to act on.
+#[tauri::command]
+pub fn set_active_device(state: State<'_, ScrcpyState>, device: Option<String>) -> Result<(), String> {
+    *state.active_device.lock().unwrap() = device;
+    Ok(())
 }
 
 /// Converts a raw captured position into the value to persist as

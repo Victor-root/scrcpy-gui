@@ -202,7 +202,7 @@ export const en = {
         fullScreen: 'Full Screen',
         fullScreenTooltip: 'Launch scrcpy in full screen mode.',
         borderless: 'Borderless',
-        borderlessTooltip: 'Launch scrcpy without window borders. Position is remembered between sessions. To move the window: Ctrl+Alt+Shift+W on Windows, Super/Meta+drag on GNOME/KDE.',
+        borderlessTooltip: 'Launch scrcpy without window borders. Position is remembered between sessions. To move the window: Ctrl+Alt+Shift+W on Windows, Super/Meta+drag on GNOME/KDE. If it ever ends up off-screen, press Ctrl+Alt+Shift+C to snap it back to the centre.',
         rememberWindowPosition: 'Remember Window Position',
         rememberWindowPositionTooltip: 'Reopen the mirror window at the same spot it was last placed. Turn this off if you often change resolution -- it can throw off the saved spot. If it ever ends up off-screen, press Ctrl+Alt+Shift+C to snap it back to the centre.',
         recordFeed: 'Record Feed',

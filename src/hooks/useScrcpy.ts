@@ -532,6 +532,19 @@ export function useScrcpy() {
         }
     };
 
+    /** Snaps the running mirror window for `device` back to the centre of the
+     *  primary screen. Recovers a window whose saved position no longer lands
+     *  on any connected monitor (e.g. it was saved on a second monitor that
+     *  has since been unplugged), so it never gets stuck off-screen with no
+     *  way to reach it. */
+    const recenterMirrorWindow = async (device: string) => {
+        try {
+            await invoke('recenter_scrcpy_window', { device });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const downloadScrcpy = async () => {
         try {
             setIsDownloading(true);
@@ -767,6 +780,7 @@ export function useScrcpy() {
         refreshDevicesUntilSettled,
         runScrcpy,
         stopScrcpy,
+        recenterMirrorWindow,
         downloadScrcpy,
         activeDevice,
         setActiveDevice,

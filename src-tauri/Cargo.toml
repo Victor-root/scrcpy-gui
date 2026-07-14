@@ -29,6 +29,10 @@ tokio = { version = "1.49.0", features = ["full"] }
 tauri-plugin-shell = "2.3.5"
 tauri-plugin-dialog = "2.7.0"
 chrono = "0.4.43"
+# Global OS shortcuts: Ctrl+Alt+Shift+C to recentre the active mirror window
+# (all platforms) and Ctrl+Alt+Shift+W to drag the borderless scrcpy window
+# with the mouse (Windows-only). See src/shortcuts.rs and src/grab.rs.
+tauri-plugin-global-shortcut = "2"
 
 # Windows-only: read the scrcpy mirror window's client-area position natively
 # (EnumWindows + ClientToScreen) to persist it across sessions. Pinned to the
@@ -41,6 +45,3 @@ windows = { version = "0.61", features = [
     "Win32_Graphics_Gdi",
     "Win32_System_LibraryLoader",
 ] }
-# Windows-only: global shortcut (Ctrl+Alt+M) to drag the borderless scrcpy
-# window with the mouse. See src/grab.rs.
-tauri-plugin-global-shortcut = "2"

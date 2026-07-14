@@ -201,7 +201,7 @@ export const zhCN: Translations = {
         fullScreen: '全屏',
         fullScreenTooltip: '以全屏模式启动 scrcpy。',
         borderless: '无边框',
-        borderlessTooltip: '启动 scrcpy 时不显示窗口边框。窗口位置会在会话间记住。移动窗口：Windows 上按 Ctrl+Alt+Shift+W，GNOME/KDE 上用 Super/Meta+拖动。',
+        borderlessTooltip: '启动 scrcpy 时不显示窗口边框。窗口位置会在会话间记住。移动窗口：Windows 上按 Ctrl+Alt+Shift+W，GNOME/KDE 上用 Super/Meta+拖动。如果窗口跑到屏幕外，按 Ctrl+Alt+Shift+C 可将其重新居中。',
         rememberWindowPosition: '记住窗口位置',
         rememberWindowPositionTooltip: '在上次的位置重新打开镜像窗口。如果你经常切换分辨率，建议关闭此项，否则可能打乱已保存的位置。如果窗口跑到屏幕外，按 Ctrl+Alt+Shift+C 可将其重新居中。',
         recordFeed: '录制画面',
