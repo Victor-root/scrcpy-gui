@@ -22,6 +22,12 @@ function formatMdnsName(name: string): string {
 
 export interface SidebarProps {
     devices: string[];
+    // Best-effort, display-only device model per serial; falls back to
+    // formatDeviceLabel(d) when a serial has no known model yet.
+    deviceModels?: Record<string, string>;
+    // Nicer marketing name per serial when available (e.g. "Galaxy S23"),
+    // fetched lazily; preferred over deviceModels when present.
+    deviceFriendlyNames?: Record<string, string>;
     runningDevices: string[];
     onRefresh: () => void;
     onKillAdb: () => void;
@@ -39,6 +45,8 @@ export interface SidebarProps {
 
 export default function Sidebar({
     devices,
+    deviceModels = {},
+    deviceFriendlyNames = {},
     runningDevices,
     onRefresh,
     onKillAdb,
@@ -177,7 +185,7 @@ export default function Sidebar({
                                             <Smartphone size={14} />
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-[11px] font-bold truncate tracking-tight ${isSelected ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>{formatDeviceLabel(d)}</p>
+                                            <p className={`text-[11px] font-bold truncate tracking-tight ${isSelected ? 'text-white' : 'text-zinc-400 group-hover:text-zinc-200'}`}>{deviceFriendlyNames[d] || deviceModels[d] || formatDeviceLabel(d)}</p>
                                             <div className="flex items-center gap-2 mt-0.5">
                                                 {isRunning ? (
                                                     <span className="flex items-center gap-1">

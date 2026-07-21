@@ -19,6 +19,8 @@ function App() {
   const { t } = useI18n();
   const {
     devices,
+    deviceModels,
+    deviceFriendlyNames,
     logs,
     activeDevice,
     setActiveDevice,
@@ -334,6 +336,8 @@ function App() {
                 <div className="transition-all duration-700">
                   <Sidebar
                     devices={devices}
+                    deviceModels={deviceModels}
+                    deviceFriendlyNames={deviceFriendlyNames}
                     runningDevices={runningDevices}
                     onRefresh={handleRefresh}
                     onKillAdb={handleKillAdb}

@@ -205,6 +205,22 @@ fn parse_adb_device_line(line: &str) -> Option<(String, String)> {
     Some((tokens[..state_idx].join(" "), tokens[state_idx].to_string()))
 }
 
+/// Extracts the `model:` field from a `adb devices -l` line, if present, for
+/// a more user-friendly device label than the raw serial (e.g. "SM S911B"
+/// instead of a USB serial or IP:port). Adb replaces spaces in the model name
+/// with underscores in this raw form; those are turned back into spaces,
+/// which is as far as this goes without an extra `getprop` round-trip per
+/// device -- still closer to a real name than a serial.
+fn extract_device_model(line: &str) -> Option<String> {
+    let model = line
+        .split_whitespace()
+        .find_map(|t| t.strip_prefix("model:"))?;
+    if model.is_empty() {
+        return None;
+    }
+    Some(model.replace('_', " "))
+}
+
 #[tauri::command]
 pub async fn get_devices(custom_path: Option<String>) -> serde_json::Value {
     let adb_path = get_binary_path("adb", custom_path);
@@ -219,14 +235,21 @@ pub async fn get_devices(custom_path: Option<String>) -> serde_json::Value {
         Ok(o) => {
              if o.status.success() {
                  let out_str = String::from_utf8_lossy(&o.stdout);
-                 let devices: Vec<String> = out_str.lines()
-                    .skip(1) // Skip "List of devices attached"
-                    .filter_map(parse_adb_device_line)
-                    .filter(|(_, state)| state == "device")
-                    .map(|(serial, _)| serial)
-                    .collect();
+                 let mut devices: Vec<String> = Vec::new();
+                 let mut device_models = serde_json::Map::new();
+                 for line in out_str.lines().skip(1) {
+                     // Skip "List of devices attached"
+                     let Some((serial, state)) = parse_adb_device_line(line) else { continue };
+                     if state != "device" {
+                         continue;
+                     }
+                     if let Some(model) = extract_device_model(line) {
+                         device_models.insert(serial.clone(), json!(model));
+                     }
+                     devices.push(serial);
+                 }
 
-                 json!({ "error": false, "devices": devices })
+                 json!({ "error": false, "devices": devices, "deviceModels": device_models })
              } else {
                  json!({ "error": true, "message": "ADB returned error" })
              }
@@ -1900,6 +1923,21 @@ mod tests {
             ),
             Some(("ZY22MGW35T".to_string(), "device".to_string()))
         );
+    }
+
+    #[test]
+    fn test_extract_device_model_replaces_underscores_with_spaces() {
+        assert_eq!(
+            extract_device_model(
+                "ZY22MGW35T device usb:1-1 product:foo model:SM_S911B device:baz transport_id:1"
+            ),
+            Some("SM S911B".to_string())
+        );
+    }
+
+    #[test]
+    fn test_extract_device_model_missing_field_returns_none() {
+        assert_eq!(extract_device_model("ZY22MGW35T device"), None);
     }
 
     #[test]

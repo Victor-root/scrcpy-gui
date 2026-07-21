@@ -89,6 +89,15 @@ type WindowPositions = Record<string, { x: number; y: number }>;
 export function useScrcpy() {
     const { t } = useI18n();
     const [devices, setDevices] = useState<string[]>([]);
+    // Best-effort, display-only device model per serial (from `adb devices
+    // -l`'s own `model:` field). Never used for identity/comparisons -- `d`
+    // (the serial) remains the source of truth everywhere else.
+    const [deviceModels, setDeviceModels] = useState<Record<string, string>>({});
+    // Nicer than deviceModels when available (e.g. "Galaxy S23" instead of
+    // "SM S911B"), fetched lazily per device via one extra `adb shell
+    // getprop` round-trip -- see the effect below for the once-per-serial
+    // cache that keeps this off the 5s background device poll.
+    const [deviceFriendlyNames, setDeviceFriendlyNames] = useState<Record<string, string>>({});
     const [logs, setLogs] = useState<string[]>([]);
     const [activeDevice, setActiveDevice] = useState<string>("");
     const [status, setStatus] = useState<string>("");
@@ -146,6 +155,11 @@ export function useScrcpy() {
     const prevDevicesRef = useRef<string[]>([]);
     const mdnsDevicesRef = useRef<MdnsDevice[]>([]);
     const rememberWindowPositionRef = useRef(true);
+    // Serials already queried for a friendly name this session (success or
+    // failure) -- guards against re-querying the same device on every 5s
+    // background poll. A failed attempt is not retried until the app restarts;
+    // the display falls back to deviceModels/the serial in the meantime.
+    const fetchedFriendlyNamesRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
 
@@ -353,6 +367,9 @@ export function useScrcpy() {
 
             if (!res.error) {
                 newDevices = res.devices as string[];
+                if (res.deviceModels) {
+                    setDeviceModels(res.deviceModels as Record<string, string>);
+                }
                 const prevDevices = prevDevicesRef.current;
 
                 // Identify connections/disconnections
@@ -479,6 +496,69 @@ export function useScrcpy() {
         }, 5000);
         return () => clearInterval(interval);
     }, []);
+
+    // Upgrade each device's label to its marketing name (e.g. "Galaxy S23"),
+    // one extra `adb shell getprop` round-trip per *newly seen* serial only --
+    // fetchedFriendlyNamesRef is what keeps this off the 5s poll above, since
+    // `devices` is a new array reference on every poll tick even when its
+    // contents haven't changed.
+    useEffect(() => {
+        devices.forEach(async (serial) => {
+            if (fetchedFriendlyNamesRef.current.has(serial)) return;
+            fetchedFriendlyNamesRef.current.add(serial);
+
+            // Emulators (Android Studio AVDs, "emulator-5554") never have a
+            // meaningful marketname or manufacturer, and ro.product.model is
+            // a generic SDK build string (e.g. "sdk_gphone64_x86_64") --
+            // uglier than the plain serial adb already assigns. Look up the
+            // AVD's own configured name instead; if that's unavailable too,
+            // explicitly keep the serial so it doesn't fall through to that
+            // uglier model string via deviceModels.
+            const isEmulator = /^emulator-\d+$/.test(serial);
+
+            try {
+                const command = isEmulator
+                    ? 'getprop ro.boot.qemu.avd_name; getprop ro.kernel.qemu.avd_name'
+                    : 'getprop ro.product.marketname; getprop ro.product.manufacturer; getprop ro.product.model';
+                const res: any = await invoke('adb_shell', { device: serial, command, customPath: config.scrcpyPath });
+
+                if (isEmulator) {
+                    const avdName = res?.success
+                        ? (res.output as string).split('\n').map(line => line.trim()).find(line => line.length > 0)
+                        : undefined;
+                    // Keep the serial visible alongside the AVD name: several
+                    // emulator instances of the same AVD image running at
+                    // once would otherwise show up as indistinguishable
+                    // identical labels in the hub.
+                    setDeviceFriendlyNames(prev => ({
+                        ...prev,
+                        [serial]: avdName ? `${avdName.replace(/_/g, ' ')} (${serial})` : serial
+                    }));
+                    return;
+                }
+
+                if (res?.success) {
+                    const [marketname, manufacturer, model] = (res.output as string)
+                        .split('\n')
+                        .map(line => line.trim());
+                    // Most devices never set marketname (it's not a universal
+                    // property -- scrcpy's own device log falls back to the
+                    // same manufacturer+model combo for exactly this reason,
+                    // e.g. "[OPPO] OPPO CPH2697"). Avoid a doubled-up name
+                    // when the model already starts with the manufacturer.
+                    const name = marketname ||
+                        (manufacturer && model && !model.toLowerCase().startsWith(manufacturer.toLowerCase())
+                            ? `${manufacturer} ${model}`
+                            : model);
+                    if (name) {
+                        setDeviceFriendlyNames(prev => ({ ...prev, [serial]: name }));
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to fetch friendly name for", serial, e);
+            }
+        });
+    }, [devices, config.scrcpyPath]);
 
     // Legacy ADB-over-network devices (a plain ip:port from the manual "IP
     // Connect" field, e.g. an Android TV/set-top box on `adb tcpip`) have no
@@ -770,6 +850,8 @@ export function useScrcpy() {
 
     return {
         devices,
+        deviceModels,
+        deviceFriendlyNames,
         logs,
         setLogs,
         clearLogs,
