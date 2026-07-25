@@ -2,12 +2,16 @@
 // Every other locale should mirror these keys.
 
 export const en = {
-    languages: { en: 'English',
-        fr: 'Français',
-        'pt-BR': 'Português (Brasil)',
-        'zh-CN': 'Simplified Chinese',
-        'zh-TW': 'Traditional Chinese', ru: 'Русский',
-        id: 'Bahasa Indonesia' },
+    languages: { 
+    en: 'English',
+    fr: 'Français',
+    'pt-BR': 'Português (Brasil)',
+    'zh-CN': 'Simplified Chinese',
+    'zh-TW': 'Traditional Chinese',
+    ru: 'Русский',
+    id: 'Bahasa Indonesia',
+    ar: 'Arabic'
+},
     common: {
         ok: 'OK',
         cancel: 'Cancel',

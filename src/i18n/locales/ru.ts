@@ -3,14 +3,15 @@ import type { Translations } from './en';
 // Russian translations.
 export const ru: Translations = {
   languages: {
-    en: 'English',
+    en: 'Anglais',
     fr: 'Français',
-    'pt-BR': 'Português (Brasil)',
-    'zh-CN': '简体中文',
-    'zh-TW': '繁體中文',
+    'pt-BR': 'Portugais (Brésil)',
+    'zh-CN': 'Chinois simplifié',
+    'zh-TW': 'Chinois traditionnel',
     ru: 'Русский',
     id: 'Bahasa Indonesia',
-  },
+    ar: 'العربية'
+},
 
   common: {
     ok: 'OK',

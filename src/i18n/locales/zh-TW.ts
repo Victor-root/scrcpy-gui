@@ -1,11 +1,16 @@
 import type { Translations } from './en';
 
 export const zhTW: Translations = {
-    languages: { en: 'English',
-        fr: 'Français',
-        'pt-BR': 'Português (Brasil)',
-        'zh-CN': '簡體中文',
-        'zh-TW': '繁體中文', ru: 'Русский', id: 'Bahasa Indonesia' },
+  languages: {
+    en: 'English',
+    fr: 'Français',
+    'pt-BR': 'Português (Brasil)',
+    'zh-CN': '簡體中文',
+    'zh-TW': '繁體中文',
+    ru: 'Русский',
+    id: 'Bahasa Indonesia',
+    ar: 'العربية'
+},
     common: {
         ok: '確定',
         cancel: '取消',

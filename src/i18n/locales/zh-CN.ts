@@ -1,15 +1,16 @@
 import type { Translations } from './en';
 
 export const zhCN: Translations = {
-    languages: {
-        en: 'English',
-        fr: 'Français',
-        'pt-BR': 'Português (Brasil)',
-        'zh-CN': '简体中文',
-        'zh-TW': '繁體中文',
-        ru: 'Русский',
-        id: 'Bahasa Indonesia'
-    },
+   languages: {
+    en: 'English',
+    fr: 'Français',
+    'pt-BR': 'Português (Brasil)',
+    'zh-CN': '简体中文',
+    'zh-TW': '繁體中文',
+    ru: 'Русский',
+    id: 'Bahasa Indonesia',
+    ar: 'العربية'
+},
     common: {
         ok: '确定',
         cancel: '取消',

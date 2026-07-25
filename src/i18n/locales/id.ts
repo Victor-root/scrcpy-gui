@@ -1,15 +1,16 @@
 import type { Translations } from './en';
 
 export const id: Translations = {
-    languages: {
-        en: 'Inggris',
-        fr: 'Prancis',
-        'pt-BR': 'Portugis (Brasil)',
-        'zh-CN': 'Tionghoa Sederhana',
-        'zh-TW': 'Tionghoa Tradisional',
-        ru: 'Русский',
-        id: 'Bahasa Indonesia'
-    },
+languages: {
+    en: 'Anglais',
+    fr: 'Français',
+    'pt-BR': 'Portugais (Brésil)',
+    'zh-CN': 'Chinois simplifié',
+    'zh-TW': 'Chinois traditionnel',
+    ru: 'Русский',
+    id: 'Bahasa Indonesia',
+    ar: 'العربية'
+},
     common: {
         ok: 'OK',
         cancel: 'Batal',
