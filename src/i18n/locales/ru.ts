@@ -208,6 +208,8 @@ export const ru: Translations = {
     fullScreenTooltip: 'Запускать scrcpy в полноэкранном режиме.',
     borderless: 'Без рамок',
     borderlessTooltip: 'Запускать scrcpy без рамки окна.',
+    rememberWindowPosition: 'Запоминать позицию окна',
+    rememberWindowPositionTooltip: 'Открывать окно трансляции там же, где оно было в прошлый раз. Отключите, если вы часто меняете разрешение -- это может сбить сохранённую позицию. Если окно окажется за пределами экрана, нажмите Ctrl+Alt+Shift+C, чтобы вернуть его по центру.',
     recordFeed: 'Записывать поток',
     recordFeedTooltip: 'Записывать экран/камеру в файл.',
     recordPath: 'Путь записи',

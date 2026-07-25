@@ -203,6 +203,8 @@ export const en = {
         fullScreenTooltip: 'Launch scrcpy in full screen mode.',
         borderless: 'Borderless',
         borderlessTooltip: 'Launch scrcpy without window borders.',
+        rememberWindowPosition: 'Remember Window Position',
+        rememberWindowPositionTooltip: 'Reopen the mirror window at the same spot it was last placed. Turn this off if you often change resolution -- it can throw off the saved spot. If it ever ends up off-screen, press Ctrl+Alt+Shift+C to snap it back to the centre.',
         recordFeed: 'Record Feed',
         recordFeedTooltip: 'Record the screen/camera feed to a file.',
         recordPath: 'Record Path',

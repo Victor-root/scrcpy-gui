@@ -202,6 +202,8 @@ export const zhCN: Translations = {
         fullScreenTooltip: '以全屏模式启动 scrcpy。',
         borderless: '无边框',
         borderlessTooltip: '启动 scrcpy 时不显示窗口边框。',
+        rememberWindowPosition: '记住窗口位置',
+        rememberWindowPositionTooltip: '在上次的位置重新打开镜像窗口。如果你经常切换分辨率，建议关闭此项，否则可能打乱已保存的位置。如果窗口跑到屏幕外，按 Ctrl+Alt+Shift+C 可将其重新居中。',
         recordFeed: '录制画面',
         recordFeedTooltip: '将屏幕或摄像头画面录制到文件。',
         recordPath: '录制路径',

@@ -9,6 +9,13 @@ use std::os::unix::process::CommandExt;
 
 pub struct ScrcpyState {
     pub processes: Mutex<HashMap<String, Child>>,
+    /// A raw window position captured by `stop_scrcpy` right before it kills
+    /// the process (the window is still exactly where the user left it at
+    /// that instant), handed off to the run_scrcpy monitor loop so it can
+    /// apply its already-learned decoration offset instead of persisting its
+    /// own periodic sample, which can be a few seconds stale. See
+    /// `resolve_window_pos_to_persist` in commands.rs.
+    pub final_capture_hint: Mutex<HashMap<String, (i32, i32)>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -61,6 +68,7 @@ pub fn run() {
         .setup(|app| {
             app.manage(ScrcpyState {
                 processes: Mutex::new(HashMap::new()),
+                final_capture_hint: Mutex::new(HashMap::new()),
             });
 
             // Show splashscreen instantly

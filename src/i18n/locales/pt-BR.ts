@@ -202,6 +202,8 @@ export const ptBR: Translations = {
         fullScreenTooltip: 'Inicia o scrcpy em modo de tela cheia.',
         borderless: 'Sem Bordas',
         borderlessTooltip: 'Inicia o scrcpy sem bordas de janela.',
+        rememberWindowPosition: 'Lembrar Posição da Janela',
+        rememberWindowPositionTooltip: 'Reabre a janela de espelhamento no mesmo lugar em que estava. Desative se você muda de resolução com frequência -- isso pode bagunçar a posição salva. Se ela sair da tela, pressione Ctrl+Alt+Shift+C para recentralizá-la.',
         recordFeed: 'Gravar Transmissão',
         recordFeedTooltip: 'Grava a transmissão da tela/câmera em um arquivo.',
         recordPath: 'Caminho de Gravação',

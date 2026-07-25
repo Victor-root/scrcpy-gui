@@ -202,6 +202,8 @@ export const zhTW: Translations = {
         fullScreenTooltip: '以全螢幕啟動。',
         borderless: '無邊框',
         borderlessTooltip: '無視窗邊框模式。',
+        rememberWindowPosition: '記住視窗位置',
+        rememberWindowPositionTooltip: '在上次的位置重新開啟鏡像視窗。如果你經常切換解析度，建議關閉此項，否則可能打亂已儲存的位置。如果視窗跑到螢幕外，按 Ctrl+Alt+Shift+C 可將其重新置中。',
         recordFeed: '錄影',
         recordFeedTooltip: '錄製畫面。',
         recordPath: '錄影路徑',

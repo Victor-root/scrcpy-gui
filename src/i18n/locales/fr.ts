@@ -202,6 +202,8 @@ export const fr: Translations = {
         fullScreenTooltip: 'Lance scrcpy en mode plein écran.',
         borderless: 'Sans Bordures',
         borderlessTooltip: 'Lance scrcpy sans bordures de fenêtre.',
+        rememberWindowPosition: 'Mémoriser la position de la fenêtre',
+        rememberWindowPositionTooltip: 'Rouvre la fenêtre de mirroring au même endroit que la dernière fois. Désactivez si vous changez souvent de résolution, ça peut sinon perturber la position enregistrée. Si elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
         recordFeed: 'Enregistrer le Flux',
         recordFeedTooltip: 'Enregistre le flux écran/caméra dans un fichier.',
         recordPath: 'Chemin d\'Enregistrement',

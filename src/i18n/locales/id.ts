@@ -202,6 +202,8 @@ languages: {
         fullScreenTooltip: 'Jalankan scrcpy dalam mode layar penuh.',
         borderless: 'Tanpa Border',
         borderlessTooltip: 'Jalankan scrcpy tanpa bingkai jendela.',
+        rememberWindowPosition: 'Ingat Posisi Jendela',
+        rememberWindowPositionTooltip: 'Buka kembali jendela mirroring di posisi terakhir. Nonaktifkan jika Anda sering mengganti resolusi -- ini bisa mengacaukan posisi yang tersimpan. Jika jendela sampai keluar dari layar, tekan Ctrl+Alt+Shift+C untuk mengembalikannya ke tengah.',
         recordFeed: 'Rekam Layar',
         recordFeedTooltip: 'Simpan rekaman layar/kamera langsung ke file.',
         recordPath: 'Jalur Rekaman',
