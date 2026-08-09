@@ -71,6 +71,12 @@ export const ar: Translations = {
         refresh: 'تحديث',
         noDevicesDetected: 'لم يتم اكتشاف أي جهاز',
         discoveredDevices: 'الأجهزة المكتشفة',
+        discoveredHint: 'اضغط على جهاز لإقرانه.',
+        pairModalTitle: 'إقران هذا الجهاز',
+        pairModalNotReadyTitle: 'غير جاهز للإقران بعد',
+        pairModalNotReadyBody: 'هذا الجهاز ليس في شاشة الإقران بعد. على الهاتف، افتح التصحيح اللاسلكي > إقران جهاز برمز الإقران، وسيظهر هنا جاهزًا للإقران.',
+        pairModalWaiting: 'جارٍ التحقق من شاشة الإقران...',
+        pairModalError: 'فشل الإقران. تحقق من الرمز وحاول مرة أخرى.',
         live: 'متصل',
         ready: 'جاهز',
         wifi: 'Wi-Fi',
@@ -89,7 +95,6 @@ export const ar: Translations = {
         wirelessSetupTipWirelessDebugging: 'التصحيح اللاسلكي',
         wirelessSetupTipTextAfter: '.',
         ipConnect: 'الاتصال عبر IP',
-        auto: 'تلقائي',
         ipPlaceholder: '192.168.x.x:5555',
         connect: 'اتصال',
         connecting: '...',
@@ -208,7 +213,9 @@ export const ar: Translations = {
         selectRecordingFolderTitle: 'اختر مجلد التسجيل',
         // v4 features
         keepActive: 'الحفاظ على النشاط',
-        keepActiveTooltip: 'يحاكي نشاط المستخدم لمنع الشاشة من الدخول في وضع السكون (Scrcpy v4+).'
+        keepActiveTooltip: 'يحاكي نشاط المستخدم لمنع الشاشة من الدخول في وضع السكون (Scrcpy v4+).',
+        rememberWindowPosition: 'تذكر موضع النافذة',
+        rememberWindowPositionTooltip: 'إعادة فتح نافذة العرض في نفس المكان الذي وُضعت فيه آخر مرة. عطّل هذا الخيار إذا كنت تغيّر الدقة بشكل متكرر، فقد يفسد الموضع المحفوظ. إذا انتهى بها الأمر خارج الشاشة، اضغط Ctrl+Alt+Shift+C لإعادتها إلى المنتصف.'
     },
     shortcuts: {
         title: 'الاختصارات (Alt +)',

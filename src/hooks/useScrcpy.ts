@@ -69,7 +69,22 @@ export interface ScrcpyConfig {
     backgroundColor?: string;
     keepActive?: boolean;
     vsync?: boolean;
+    /** Whether to remember each device's mirror window position and restore
+     *  it on the next launch. Defaults to true; some users find a window
+     *  that always reopens at scrcpy's default spot less surprising. */
+    rememberWindowPosition?: boolean;
+    /** Screen position (pixels) to restore via --window-x / --window-y for
+     *  this launch. Resolved per-device from windowPositions right before
+     *  invoking run_scrcpy; never set directly by the UI. */
+    windowX?: number;
+    windowY?: number;
 }
+
+/** Last known screen position of the scrcpy window, per device serial. Keyed
+ *  by device because different devices (e.g. a phone vs. a tablet) produce
+ *  very differently sized windows: a single shared position would reopen an
+ *  unrelated device's window mostly off-screen. */
+type WindowPositions = Record<string, { x: number; y: number }>;
 
 export function useScrcpy() {
     const { t } = useI18n();
@@ -124,16 +139,28 @@ export function useScrcpy() {
         cameraZoom: 1.0,
         backgroundColor: '',
         keepActive: false,
-        vsync: true
+        vsync: true,
+        rememberWindowPosition: true
     });
+    const [windowPositions, setWindowPositions] = useState<WindowPositions>({});
     const prevDevicesRef = useRef<string[]>([]);
     const mdnsDevicesRef = useRef<MdnsDevice[]>([]);
+    const rememberWindowPositionRef = useRef(true);
 
     useEffect(() => {
 
         const savedTheme = localStorage.getItem('scrcpy_theme');
         if (savedTheme) {
             setTheme(savedTheme);
+        }
+
+        const savedWindowPositions = localStorage.getItem('scrcpy_window_positions');
+        if (savedWindowPositions) {
+            try {
+                setWindowPositions(JSON.parse(savedWindowPositions));
+            } catch (e) {
+                console.error("Failed to parse saved window positions", e);
+            }
         }
 
         const savedConfig = localStorage.getItem('scrcpy_config');
@@ -183,6 +210,18 @@ export function useScrcpy() {
         if (!isInitialized) return;
         localStorage.setItem('scrcpy_config', JSON.stringify(config));
     }, [config, isInitialized]);
+
+    // Kept in a ref (not read from `config` directly) so the window-position
+    // listener below, which only subscribes once on mount, always sees the
+    // current value without needing to resubscribe on every config change.
+    useEffect(() => {
+        rememberWindowPositionRef.current = config.rememberWindowPosition !== false;
+    }, [config.rememberWindowPosition]);
+
+    useEffect(() => {
+        if (!isInitialized) return;
+        localStorage.setItem('scrcpy_window_positions', JSON.stringify(windowPositions));
+    }, [windowPositions, isInitialized]);
 
     useEffect(() => {
         if (!isInitialized) return;
@@ -251,9 +290,26 @@ export function useScrcpy() {
             }
         });
 
+        // Persist the scrcpy window position emitted when a session ends, so the
+        // next launch restores it (via --window-x / --window-y). This is what
+        // lets a borderless window, which cannot be dragged, reopen where the
+        // user placed it with borders. Keyed by device (not stored on the
+        // shared config): different devices produce very differently sized
+        // windows (e.g. a phone vs. a tablet), so a single shared position
+        // would reopen an unrelated device's window mostly off-screen.
+        const unlistenWindowPos = listen<{ device: string; x: number; y: number }>(
+            'scrcpy-window-pos',
+            (event) => {
+                if (!rememberWindowPositionRef.current) return;
+                const { device, x, y } = event.payload;
+                setWindowPositions(prev => ({ ...prev, [device]: { x, y } }));
+            }
+        );
+
         return () => {
             unlistenLog.then(f => f());
             unlistenStatus.then(f => f());
+            unlistenWindowPos.then(f => f());
         };
     }, [t]);
 
@@ -454,7 +510,15 @@ export function useScrcpy() {
     const runScrcpy = async (config: ScrcpyConfig) => {
         try {
             setLogs(prev => [...prev.slice(-100), t('logs.initializingScrcpy', { device: config.device })]);
-            await invoke('run_scrcpy', { config });
+            // Resolve the saved position for this specific device only, so
+            // launching one device never reuses another device's window spot.
+            const savedPos = config.rememberWindowPosition !== false ? windowPositions[config.device] : undefined;
+            const configWithPos: ScrcpyConfig = {
+                ...config,
+                windowX: savedPos?.x,
+                windowY: savedPos?.y
+            };
+            await invoke('run_scrcpy', { config: configWithPos });
         } catch (e: any) {
             setLogs(prev => [...prev.slice(-100), t('logs.failedToStartScrcpy', { error: String(e) })]);
         }
@@ -463,6 +527,19 @@ export function useScrcpy() {
     const stopScrcpy = async (device: string) => {
         try {
             await invoke('stop_scrcpy', { device });
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    /** Snaps the running mirror window for `device` back to the centre of the
+     *  primary screen. Recovers a window whose saved position no longer lands
+     *  on any connected monitor (e.g. it was saved on a second monitor that
+     *  has since been unplugged), so it never gets stuck off-screen with no
+     *  way to reach it. */
+    const recenterMirrorWindow = async (device: string) => {
+        try {
+            await invoke('recenter_scrcpy_window', { device });
         } catch (e) {
             console.error(e);
         }
@@ -703,6 +780,7 @@ export function useScrcpy() {
         refreshDevicesUntilSettled,
         runScrcpy,
         stopScrcpy,
+        recenterMirrorWindow,
         downloadScrcpy,
         activeDevice,
         setActiveDevice,

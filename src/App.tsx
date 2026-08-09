@@ -187,6 +187,18 @@ function App() {
   }, [activeDevice]);
 
   useEffect(() => {
+    // Keep the Rust side's notion of "the selected device" in sync, so the
+    // Ctrl+Alt+Shift+C global shortcut (a real OS-level hotkey registered in
+    // shortcuts.rs, not a webview keydown listener) knows which mirror window
+    // to recentre even when no app window has keyboard focus.
+    const device = activeDevice && runningDevices.includes(activeDevice) ? activeDevice : null;
+    (async () => {
+      const { invoke } = await import('@tauri-apps/api/core');
+      await invoke('set_active_device', { device });
+    })();
+  }, [activeDevice, runningDevices]);
+
+  useEffect(() => {
     if (activeDevice) {
       setConfig(prev => ({ ...prev, device: activeDevice }));
     }
