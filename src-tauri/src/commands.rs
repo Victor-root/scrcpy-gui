@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use serde_json::json;
-use crate::ScrcpyState;
+use crate::{ScrcpyState, GnirehtetState};
 use tokio::process::Command as TokioCommand;
 use tokio::io::{BufReader, AsyncBufReadExt};
 use tokio::time::{timeout, Duration};
@@ -2034,6 +2034,448 @@ pub async fn stop_scrcpy(state: State<'_, ScrcpyState>, device: String) -> Resul
     Ok(())
 }
 
+// The gnirehtet binary resolves gnirehtet.apk relative to its current
+// working directory, not its own executable path, so "install" would
+// silently fail to find the bundled apk unless we override its location
+// through this environment variable (supported since gnirehtet-rust).
+fn gnirehtet_command(gnirehtet_path: &str, adb_path: &str) -> TokioCommand {
+    let mut cmd = create_command(gnirehtet_path);
+    cmd.env("ADB", adb_path);
+    if let Some(parent) = Path::new(gnirehtet_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            cmd.env("GNIREHTET_APK", parent.join("gnirehtet.apk"));
+        }
+    }
+    cmd
+}
+
+// Forwards the relay's own output to the log panel. When `ready` is set, also
+// watches for the relay's "Relay server started" line and wakes up any
+// waiter as soon as it appears, instead of guessing with a fixed delay.
+fn pipe_gnirehtet_output(
+    window: &Window,
+    stdout: Option<tokio::process::ChildStdout>,
+    stderr: Option<tokio::process::ChildStderr>,
+    ready: Option<Arc<tokio::sync::Notify>>,
+) {
+    if let Some(stdout) = stdout {
+        let window = window.clone();
+        let ready = ready.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stdout).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if let Some(ready) = &ready {
+                    if line.contains("Relay server started") {
+                        ready.notify_one();
+                    }
+                }
+                let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", line));
+            }
+        });
+    }
+    if let Some(stderr) = stderr {
+        let window = window.clone();
+        tokio::spawn(async move {
+            let mut lines = BufReader::new(stderr).lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                if let Some(ready) = &ready {
+                    if line.contains("Relay server started") {
+                        ready.notify_one();
+                    }
+                }
+                let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", line));
+            }
+        });
+    }
+}
+
+// Stops reverse tethering for a single device and, once no device still
+// uses it, tears down the shared relay server. Internet sharing is
+// independent of any mirror session, so this only runs from an explicit
+// stop_reverse_tethering call (or when a device disconnects, from the
+// frontend) rather than being tied to run_scrcpy's lifecycle.
+async fn deactivate_gnirehtet_device(
+    window: &Window,
+    gnirehtet_state: &GnirehtetState,
+    device: &str,
+    custom_path: Option<String>,
+) {
+    let was_active = gnirehtet_state.active_devices.lock().unwrap().remove(device);
+    if !was_active {
+        return;
+    }
+
+    let adb_path = get_binary_path("adb", custom_path.clone());
+    let gnirehtet_path = get_binary_path("gnirehtet", custom_path);
+
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Stopping internet sharing for {}...", device));
+    let _ = gnirehtet_command(&gnirehtet_path, &adb_path)
+        .arg("stop")
+        .arg(device)
+        .output()
+        .await;
+
+    let relay_child = {
+        let still_in_use = !gnirehtet_state.active_devices.lock().unwrap().is_empty();
+        if still_in_use {
+            None
+        } else {
+            gnirehtet_state.relay.lock().unwrap().take()
+        }
+    };
+
+    if let Some(mut child) = relay_child {
+        let _ = window.emit("scrcpy-log", "[GNIREHTET] No device left using internet sharing, stopping relay server.".to_string());
+        let _ = child.kill().await;
+    }
+}
+
+#[tauri::command]
+pub async fn check_gnirehtet(custom_path: Option<String>) -> serde_json::Value {
+    let exe_path = get_binary_path("gnirehtet", custom_path);
+
+    // Unlike scrcpy/adb, gnirehtet has no --help/--version flag: an unknown
+    // argument exits 1, so probe with no arguments at all (it prints usage
+    // and exits 0 in that case).
+    let output = create_command(&exe_path)
+        .output()
+        .await;
+
+    match output {
+        Ok(o) if o.status.success() => {
+            json!({ "found": true, "message": "Gnirehtet Ready" })
+        },
+        Ok(_) => {
+            json!({ "found": false, "message": "Failed to start gnirehtet (Exit Code != 0)" })
+        },
+        Err(_) => {
+            json!({ "found": false, "message": "Gnirehtet not found" })
+        }
+    }
+}
+
+#[tauri::command]
+pub async fn start_reverse_tethering(window: Window, state: State<'_, GnirehtetState>, app_handle: tauri::AppHandle, device: String, custom_path: Option<String>) -> Result<serde_json::Value, String> {
+    let adb_path = get_binary_path("adb", custom_path.clone());
+    let gnirehtet_path = get_binary_path("gnirehtet", custom_path);
+
+    // Lazily start the shared relay server; several devices can reuse the same
+    // one. If a previous relay process has died without us noticing (e.g. it
+    // crashed), treat it as absent so a fresh one gets spawned instead of
+    // silently trying to talk to a dead process.
+    let should_spawn_relay = {
+        let mut relay_guard = state.relay.lock().unwrap();
+        let is_dead = match relay_guard.as_mut() {
+            Some(child) => matches!(child.try_wait(), Ok(Some(_)) | Err(_)),
+            None => false,
+        };
+        if is_dead {
+            *relay_guard = None;
+        }
+        relay_guard.is_none()
+    };
+
+    if should_spawn_relay {
+        let _ = window.emit("scrcpy-log", "[GNIREHTET] Starting relay server...".to_string());
+
+        let mut cmd = gnirehtet_command(&gnirehtet_path, &adb_path);
+        cmd.arg("relay");
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
+
+        let mut child = cmd.spawn().map_err(|e| format!("Failed to start gnirehtet relay: {}", e))?;
+        let ready = Arc::new(tokio::sync::Notify::new());
+        pipe_gnirehtet_output(&window, child.stdout.take(), child.stderr.take(), Some(ready.clone()));
+        *state.relay.lock().unwrap() = Some(child);
+
+        // Wait for the relay's own readiness line instead of guessing with a
+        // fixed delay; bounded so a wording change upstream can never hang this.
+        if tokio::time::timeout(Duration::from_secs(3), ready.notified()).await.is_err() {
+            let _ = window.emit("scrcpy-log", "[GNIREHTET] Relay did not confirm readiness in time, continuing anyway...".to_string());
+        }
+
+        // Supervise the relay in the background: if it dies while devices are
+        // still using it, clear their state instead of leaving the UI stuck
+        // showing internet sharing as active.
+        let app_handle_mon = app_handle.clone();
+        let window_mon = window.clone();
+        tokio::spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(500)).await;
+                let gnirehtet_state = app_handle_mon.state::<GnirehtetState>();
+                let died = {
+                    let mut relay_guard = gnirehtet_state.relay.lock().unwrap();
+                    match relay_guard.as_mut() {
+                        Some(child) => match child.try_wait() {
+                            Ok(Some(_)) | Err(_) => {
+                                *relay_guard = None;
+                                true
+                            }
+                            Ok(None) => false,
+                        },
+                        None => true,
+                    }
+                };
+                if died {
+                    let had_active = {
+                        let mut active = gnirehtet_state.active_devices.lock().unwrap();
+                        let was_nonempty = !active.is_empty();
+                        active.clear();
+                        was_nonempty
+                    };
+                    if had_active {
+                        let _ = window_mon.emit("scrcpy-log", "[GNIREHTET] Relay server stopped unexpectedly, internet sharing disabled.".to_string());
+                        let _ = window_mon.emit("scrcpy-status", json!({ "type": "gnirehtet-relay-down" }));
+                    }
+                    break;
+                }
+            }
+        });
+    }
+
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Installing client on {}...", device));
+    let install_output = gnirehtet_command(&gnirehtet_path, &adb_path)
+        .arg("install")
+        .arg(&device)
+        .output()
+        .await;
+    if let Ok(o) = &install_output {
+        let out_text = String::from_utf8_lossy(&o.stdout).trim().to_string();
+        let err_text = String::from_utf8_lossy(&o.stderr).trim().to_string();
+        if !out_text.is_empty() { let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", out_text)); }
+        if !err_text.is_empty() { let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", err_text)); }
+    }
+
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Requesting internet sharing for {}...", device));
+    let start_output = gnirehtet_command(&gnirehtet_path, &adb_path)
+        .arg("start")
+        .arg(&device)
+        .output()
+        .await
+        .map_err(|e| format!("Failed to start gnirehtet client: {}", e))?;
+
+    if !start_output.status.success() {
+        let err_text = String::from_utf8_lossy(&start_output.stderr).trim().to_string();
+        let message = if err_text.is_empty() { "gnirehtet start failed".to_string() } else { err_text };
+        let _ = window.emit("scrcpy-log", format!("[GNIREHTET] {}", message));
+        return Ok(json!({ "success": false, "message": message }));
+    }
+
+    state.active_devices.lock().unwrap().insert(device.clone());
+    let _ = window.emit("scrcpy-log", format!("[GNIREHTET] Internet sharing active for {}. Accept the VPN prompt on the device if shown.", device));
+
+    Ok(json!({ "success": true }))
+}
+
+#[tauri::command]
+pub async fn stop_reverse_tethering(window: Window, state: State<'_, GnirehtetState>, device: String, custom_path: Option<String>) -> Result<(), String> {
+    deactivate_gnirehtet_device(&window, &state, &device, custom_path).await;
+    Ok(())
+}
+
+fn sha256_hex(path: &Path) -> Result<String, String> {
+    use sha2::{Digest, Sha256};
+    let mut file = std::fs::File::open(path).map_err(|e| e.to_string())?;
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).map_err(|e| e.to_string())?;
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+// SHA256SUMS.txt lines look like "<hexhash>  <filename>" (sha256sum's default
+// text-mode format), occasionally with a leading '*' before the name in
+// binary mode.
+fn parse_sha256_for_file<'a>(sums_text: &'a str, filename: &str) -> Option<&'a str> {
+    for line in sums_text.lines() {
+        let mut parts = line.split_whitespace();
+        let hash = parts.next()?;
+        let name = parts.next()?.trim_start_matches('*');
+        if name == filename {
+            return Some(hash);
+        }
+    }
+    None
+}
+
+#[tauri::command]
+pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
+    use std::io::Write;
+
+    // Only the Rust rewrite ships prebuilt binaries, and only for these two targets.
+    let arch_tag = if cfg!(target_os = "windows") && cfg!(target_arch = "x86_64") {
+        "win64"
+    } else if cfg!(target_os = "linux") && cfg!(target_arch = "x86_64") {
+        "linux64"
+    } else {
+        return Err("Gnirehtet auto-download is only available for 64-bit Windows and Linux. Install it manually from the Gnirehtet GitHub releases page.".to_string());
+    };
+
+    window.emit("scrcpy-log", format!("[GNIREHTET] Detecting platform: {}", arch_tag)).unwrap();
+    window.emit("scrcpy-status", json!({ "type": "downloading-gnirehtet", "success": true, "message": format!("Fetching latest {} release...", arch_tag) })).unwrap();
+
+    let client = reqwest::Client::builder().user_agent("ScrcpyGui-Downloader").build().map_err(|e| e.to_string())?;
+
+    let mut download_url = String::new();
+    let mut filename = String::new();
+    let mut checksums_url = String::new();
+
+    let api_url = "https://api.github.com/repos/Genymobile/gnirehtet/releases/latest";
+    let api_resp = client.get(api_url).send().await;
+
+    let mut used_fallback = false;
+
+    if let Ok(resp) = api_resp {
+        if resp.status().is_success() {
+            if let Ok(json) = resp.json::<serde_json::Value>().await {
+                if let Some(assets) = json["assets"].as_array() {
+                    for asset in assets {
+                        let name = asset["name"].as_str().unwrap_or("");
+                        if name.starts_with(&format!("gnirehtet-rust-{}-", arch_tag)) && name.ends_with(".zip") {
+                            download_url = asset["browser_download_url"].as_str().unwrap_or("").to_string();
+                            filename = name.to_string();
+                        } else if name.eq_ignore_ascii_case("SHA256SUMS.txt") {
+                            checksums_url = asset["browser_download_url"].as_str().unwrap_or("").to_string();
+                        }
+                    }
+                }
+            }
+        } else if resp.status() == reqwest::StatusCode::FORBIDDEN {
+            window.emit("scrcpy-log", "[GNIREHTET] API rate limited, attempting fallback discovery...").unwrap();
+            used_fallback = true;
+        }
+    } else {
+        used_fallback = true;
+    }
+
+    if used_fallback || download_url.is_empty() {
+        let redirect_res = client.get("https://github.com/Genymobile/gnirehtet/releases/latest")
+            .send().await.map_err(|e| format!("Fallback failed: {}", e))?;
+
+        let final_url = redirect_res.url().as_str();
+        if let Some(tag) = final_url.split('/').next_back() {
+            if tag.starts_with('v') {
+                filename = format!("gnirehtet-rust-{}-{}.zip", arch_tag, tag);
+                download_url = format!("https://github.com/Genymobile/gnirehtet/releases/download/{}/{}", tag, filename);
+                checksums_url = format!("https://github.com/Genymobile/gnirehtet/releases/download/{}/SHA256SUMS.txt", tag);
+                window.emit("scrcpy-log", format!("[GNIREHTET] Discovered latest tag via fallback: {}", tag)).unwrap();
+            }
+        }
+    }
+
+    if download_url.is_empty() {
+        return Err(format!("Could not find {} binary. (API rate limit might be active)", arch_tag));
+    }
+
+    window.emit("scrcpy-log", format!("[GNIREHTET] Found asset: {}", filename)).unwrap();
+
+    let current_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .unwrap_or_else(|| std::env::current_dir().unwrap());
+
+    let temp_archive_path = current_dir.join("gnirehtet_temp.zip");
+    // Reuse the same bin folder as scrcpy/adb so the app only manages one directory,
+    // and merge into it below instead of wiping it (download_scrcpy's approach) since
+    // it may already hold scrcpy/adb.
+    let extract_path = current_dir.join("scrcpy-bin");
+
+    {
+        let mut file = std::fs::File::create(&temp_archive_path).map_err(|e| format!("Failed to create archive file: {}", e))?;
+        let mut download_resp = client.get(&download_url).send().await.map_err(|e| format!("Failed to connect to download URL: {}", e))?;
+        let total_size = download_resp.content_length().unwrap_or(0);
+
+        // GitHub's redirect target does not always send a Content-Length
+        // (chunked transfer encoding), in which case total_size is 0: say so
+        // plainly instead of printing a misleading "Downloading: 0 MB".
+        if total_size > 0 {
+            window.emit("scrcpy-log", format!("[GNIREHTET] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+        } else {
+            window.emit("scrcpy-log", "[GNIREHTET] Downloading (size unknown)...").unwrap();
+        }
+
+        let mut downloaded: u64 = 0;
+        while let Some(chunk) = download_resp.chunk().await.map_err(|e| e.to_string())? {
+            file.write_all(&chunk).map_err(|e| format!("Failed to write chunk: {}", e))?;
+            downloaded += chunk.len() as u64;
+            if total_size > 0 {
+                let percent = (downloaded * 100) / total_size;
+                let _ = window.emit("gnirehtet-download-progress", json!({ "percent": percent }));
+            }
+        }
+
+        window.emit("scrcpy-log", format!("[GNIREHTET] Downloaded {} MB.", downloaded / 1024 / 1024)).unwrap();
+    }
+
+    window.emit("scrcpy-log", "[GNIREHTET] Download finished. Verifying checksum...").unwrap();
+
+    if checksums_url.is_empty() {
+        window.emit("scrcpy-log", "[GNIREHTET] No checksum file found for this release, skipping verification.").unwrap();
+    } else {
+        match client.get(&checksums_url).send().await {
+            Ok(resp) => match resp.text().await {
+                Ok(text) => match parse_sha256_for_file(&text, &filename) {
+                    Some(expected_hash) => match sha256_hex(&temp_archive_path) {
+                        Ok(actual_hash) => {
+                            if actual_hash.eq_ignore_ascii_case(expected_hash) {
+                                window.emit("scrcpy-log", "[GNIREHTET] Checksum verified.").unwrap();
+                            } else {
+                                let _ = std::fs::remove_file(&temp_archive_path);
+                                return Err("Checksum verification failed: the downloaded file does not match SHA256SUMS.txt. Aborting install.".to_string());
+                            }
+                        }
+                        Err(e) => {
+                            window.emit("scrcpy-log", format!("[GNIREHTET] Could not compute checksum: {}", e)).unwrap();
+                        }
+                    },
+                    None => {
+                        window.emit("scrcpy-log", "[GNIREHTET] Checksum entry not found for this asset, skipping verification.").unwrap();
+                    }
+                },
+                Err(_) => {
+                    window.emit("scrcpy-log", "[GNIREHTET] Could not read checksum file, skipping verification.").unwrap();
+                }
+            },
+            Err(_) => {
+                window.emit("scrcpy-log", "[GNIREHTET] Could not fetch checksum file, skipping verification.").unwrap();
+            }
+        }
+    }
+
+    window.emit("scrcpy-log", "[GNIREHTET] Starting extraction...").unwrap();
+    window.emit("scrcpy-status", json!({ "type": "downloading-gnirehtet", "success": true, "message": "Extracting binaries..." })).unwrap();
+
+    let temp_extract_dir = current_dir.join("gnirehtet_temp_extract");
+    if temp_extract_dir.exists() {
+        let _ = std::fs::remove_dir_all(&temp_extract_dir);
+    }
+    std::fs::create_dir_all(&temp_extract_dir).map_err(|e| e.to_string())?;
+
+    {
+        let file = std::fs::File::open(&temp_archive_path).map_err(|e| format!("Failed to open zip: {}", e))?;
+        let mut archive = zip::ZipArchive::new(file).map_err(|e| format!("Failed to read zip archive: {}", e))?;
+        archive.extract(&temp_extract_dir).map_err(|e| format!("Failed to extract: {}", e))?;
+    }
+
+    // Merge into the existing scrcpy-bin folder (adb/scrcpy may already live there)
+    // instead of replacing it outright.
+    let mut entries = std::fs::read_dir(&temp_extract_dir).map_err(|e| e.to_string())?;
+    if let Some(entry) = entries.next() {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let path = entry.path();
+
+        if path.is_dir() {
+            copy_dir_all(&path, &extract_path).map_err(|e| e.to_string())?;
+        } else {
+            copy_dir_all(&temp_extract_dir, &extract_path).map_err(|e| e.to_string())?;
+        }
+    }
+
+    if temp_extract_dir.exists() { let _ = std::fs::remove_dir_all(&temp_extract_dir); }
+    if temp_archive_path.exists() { let _ = std::fs::remove_file(&temp_archive_path); }
+
+    window.emit("scrcpy-status", json!({ "type": "download-complete-gnirehtet", "success": true, "message": extract_path.to_string_lossy() })).unwrap();
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn download_scrcpy(window: Window) -> Result<(), String> {
     use std::io::Write;
@@ -2120,8 +2562,15 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
         let mut file = std::fs::File::create(&temp_archive_path).map_err(|e| format!("Failed to create archive file: {}", e))?;
         let mut download_resp = client.get(&download_url).send().await.map_err(|e| format!("Failed to connect to download URL: {}", e))?;
         let total_size = download_resp.content_length().unwrap_or(0);
-        
-        window.emit("scrcpy-log", format!("[SYSTEM] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+
+        // GitHub's redirect target does not always send a Content-Length
+        // (chunked transfer encoding), in which case total_size is 0: say so
+        // plainly instead of printing a misleading "Downloading: 0 MB".
+        if total_size > 0 {
+            window.emit("scrcpy-log", format!("[SYSTEM] Downloading: {} MB", total_size / 1024 / 1024)).unwrap();
+        } else {
+            window.emit("scrcpy-log", "[SYSTEM] Downloading (size unknown)...").unwrap();
+        }
 
         let mut downloaded: u64 = 0;
         while let Some(chunk) = download_resp.chunk().await.map_err(|e| e.to_string())? {
@@ -2132,6 +2581,8 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
                 let _ = window.emit("download-progress", json!({ "percent": percent }));
             }
         }
+
+        window.emit("scrcpy-log", format!("[SYSTEM] Downloaded {} MB.", downloaded / 1024 / 1024)).unwrap();
     }
     
     window.emit("scrcpy-log", "[SYSTEM] Download finished. Starting extraction...").unwrap();

@@ -57,7 +57,15 @@ function App() {
     clearHistory,
     isOnboardingOpen,
     setIsOnboardingOpen,
-    completeOnboarding
+    completeOnboarding,
+    gnirehtetActive,
+    isTogglingGnirehtet,
+    startReverseTethering,
+    stopReverseTethering,
+    gnirehtetStatus,
+    downloadGnirehtet,
+    isDownloadingGnirehtet,
+    gnirehtetDownloadProgress
   } = useScrcpy();
 
   const [alertState, setAlertState] = useState<{
@@ -382,7 +390,24 @@ function App() {
               </div>
 
               <div className="lg:col-span-3 flex flex-col gap-6">
-                <SessionBehavior config={config} setConfig={setConfig} />
+                <SessionBehavior
+                  config={config}
+                  setConfig={setConfig}
+                  internetSharingActive={!!gnirehtetActive[activeDevice || '']}
+                  internetSharingAvailable={!!activeDevice && devices.includes(activeDevice) && !activeDevice.includes('.')}
+                  internetSharingWifiBlocked={!!activeDevice && activeDevice.includes('.')}
+                  internetSharingBusy={isTogglingGnirehtet}
+                  onToggleInternetSharing={(v) => {
+                    if (!activeDevice) return;
+                    if (v) startReverseTethering(activeDevice);
+                    else stopReverseTethering(activeDevice);
+                  }}
+                  gnirehtetFound={gnirehtetStatus.found}
+                  isDownloadingGnirehtet={isDownloadingGnirehtet}
+                  gnirehtetDownloadProgress={gnirehtetDownloadProgress}
+                  onDownloadGnirehtet={downloadGnirehtet}
+                  hostOs={renderDriverSupport.hostOs}
+                />
                 <ShortcutsPanel />
               </div>
             </div>

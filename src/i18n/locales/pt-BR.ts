@@ -212,7 +212,15 @@ export const ptBR: Translations = {
         selectRecordingFolderTitle: 'Selecionar Pasta de Gravação',
         // v4 features
         keepActive: 'Manter Ativo',
-        keepActiveTooltip: 'Simula atividade do usuário para evitar que a tela entre em modo ocioso (scrcpy v4+).'
+        keepActiveTooltip: 'Simula atividade do usuário para evitar que a tela entre em modo ocioso (scrcpy v4+).',
+        internetSharingSection: 'Compartilhamento de Internet (Experimental)',
+        internetSharing: 'Compartilhar Internet do PC',
+        internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Compartilha a conexão de internet deste computador com o dispositivo. Inicia e para em tempo real, independente da sessão de espelhamento, e reutiliza o ADB do próprio aplicativo.',
+        internetSharingUnavailableTooltip: 'Selecione um dispositivo conectado no Hub de Dispositivos para ativar o compartilhamento de internet.',
+        internetSharingWifiBlockedTooltip: 'Não disponível via ADB sem fio: a VPN do gnirehtet pode entrar em conflito com a própria conexão ADB por Wi-Fi (limitação conhecida do projeto original). Conecte este dispositivo via USB para usar o compartilhamento de internet.',
+        internetSharingManualInstall: 'Instalação manual',
+        internetSharingInstall: 'Instalar',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: 'Atalhos (Alt +)',
@@ -311,6 +319,8 @@ export const ptBR: Translations = {
         pushingFile: '[SYSTEM] Enviando arquivo para {device}: {filePath}...',
         installingApk: '[SYSTEM] Instalando APK em {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[ERROR] Comando falhou: {error}'
+        commandFailed: '[ERROR] Comando falhou: {error}',
+        gnirehtetStartFailed: '[ERROR] Falha ao iniciar o compartilhamento de internet: {error}',
+        gnirehtetRelayDown: '[GNIREHTET] O servidor relay parou inesperadamente, compartilhamento de internet desativado para todos os dispositivos.'
     }
 };

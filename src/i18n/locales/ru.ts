@@ -219,6 +219,14 @@ export const ru: Translations = {
     // v4 features
     keepActive: 'Держать активным',
     keepActiveTooltip: 'Имитирует активность пользователя, чтобы экран не отключался (scrcpy v4+).',
+    internetSharingSection: 'Общий доступ в интернет (экспериментально)',
+    internetSharing: 'Раздать интернет с ПК',
+    internetSharingTooltip: 'Обратное подключение через ADB (Gnirehtet). Раздаёт интернет-соединение этого компьютера на устройство. Запускается и останавливается вживую, независимо от сеанса трансляции, и использует собственный ADB приложения.',
+    internetSharingUnavailableTooltip: 'Выберите подключённое устройство в Хабе устройств, чтобы включить раздачу интернета.',
+    internetSharingWifiBlockedTooltip: 'Недоступно через беспроводной ADB: VPN gnirehtet может конфликтовать с самим Wi-Fi ADB-соединением (известное ограничение проекта). Подключите это устройство через USB, чтобы использовать раздачу интернета.',
+    internetSharingManualInstall: 'Установка вручную',
+    internetSharingInstall: 'Установить',
+    internetSharingDownloading: '{progress}%',
   },
 
   shortcuts: {
@@ -325,5 +333,7 @@ export const ru: Translations = {
     installingApk: '[SYSTEM] Установка APK на {device}: {filePath}...',
     adbPrefix: '[ADB] {message}',
     commandFailed: '[ERROR] Команда завершилась с ошибкой: {error}',
+    gnirehtetStartFailed: '[ERROR] Не удалось запустить раздачу интернета: {error}',
+    gnirehtetRelayDown: '[GNIREHTET] Сервер relay неожиданно остановился, раздача интернета отключена для всех устройств.',
   },
 };

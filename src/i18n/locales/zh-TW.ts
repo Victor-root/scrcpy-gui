@@ -212,7 +212,15 @@ export const zhTW: Translations = {
         selectRecordingFolderTitle: '選擇錄影資料夾',
         // v4 features
         keepActive: '保持活躍',
-        keepActiveTooltip: '模擬使用者操作以防止螢幕進入閒置狀態（scrcpy v4+）。'
+        keepActiveTooltip: '模擬使用者操作以防止螢幕進入閒置狀態（scrcpy v4+）。',
+        internetSharingSection: '網路共享（實驗性）',
+        internetSharing: '共享電腦網路',
+        internetSharingTooltip: '透過 ADB 進行反向網路共享（Gnirehtet）。將這台電腦的網路連線共享給裝置。可即時啟動或停止，獨立於鏡像工作階段，並重複使用本應用程式自身的 ADB。',
+        internetSharingUnavailableTooltip: '請在裝置中心選擇一個已連線的裝置，才能啟用網路共享。',
+        internetSharingWifiBlockedTooltip: '無線 ADB 下不可用：gnirehtet 的 VPN 可能與 WiFi ADB 連線本身衝突（上游專案已知的限制）。請透過 USB 連線此裝置以使用網路共享。',
+        internetSharingManualInstall: '手動安裝',
+        internetSharingInstall: '安裝',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: '快捷鍵 (Alt +)',
@@ -311,6 +319,8 @@ export const zhTW: Translations = {
         pushingFile: '[系統] 正在將檔案傳送至 {device}：{filePath}...',
         installingApk: '[系統] 正在 {device} 安裝 APK：{filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[錯誤] 指令失敗：{error}'
+        commandFailed: '[錯誤] 指令失敗：{error}',
+        gnirehtetStartFailed: '[錯誤] 啟動網路共享失敗：{error}',
+        gnirehtetRelayDown: '[GNIREHTET] 中繼伺服器意外停止，所有裝置的網路共享已停用。'
     }
 };

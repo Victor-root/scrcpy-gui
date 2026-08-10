@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { ScrcpyConfig } from '../hooks/useScrcpy';
 import Tooltip from './Tooltip';
-import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Move } from 'lucide-react';
+import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Move, Wifi, Download, RefreshCw, ExternalLink } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 const AUDIO_CODEC_VALUES = ['auto', 'opus', 'aac', 'flac', 'raw'] as const;
@@ -11,6 +11,16 @@ type AudioCodec = typeof AUDIO_CODEC_VALUES[number];
 interface SessionBehaviorProps {
     config: ScrcpyConfig;
     setConfig: (c: ScrcpyConfig) => void;
+    internetSharingActive: boolean;
+    internetSharingAvailable: boolean;
+    internetSharingWifiBlocked: boolean;
+    internetSharingBusy: boolean;
+    onToggleInternetSharing: (v: boolean) => void;
+    gnirehtetFound: boolean;
+    isDownloadingGnirehtet: boolean;
+    gnirehtetDownloadProgress: number;
+    onDownloadGnirehtet: () => void;
+    hostOs: string;
 }
 
 // Module-scope, not defined inside SessionBehavior: a component defined inside
@@ -105,7 +115,20 @@ const Toggle = ({ checked, onChange, icon: Icon, label, tooltip, danger = false 
     </div>
 );
 
-export default function SessionBehavior({ config, setConfig }: SessionBehaviorProps) {
+export default function SessionBehavior({
+    config,
+    setConfig,
+    internetSharingActive,
+    internetSharingAvailable,
+    internetSharingWifiBlocked,
+    internetSharingBusy,
+    onToggleInternetSharing,
+    gnirehtetFound,
+    isDownloadingGnirehtet,
+    gnirehtetDownloadProgress,
+    onDownloadGnirehtet,
+    hostOs
+}: SessionBehaviorProps) {
     const { t } = useI18n();
 
     const handleChange = (field: keyof ScrcpyConfig, value: any) => {
@@ -214,6 +237,66 @@ export default function SessionBehavior({ config, setConfig }: SessionBehaviorPr
                         tooltip={t('sessionBehavior.recordFeedTooltip')}
                         danger={true}
                     />
+                </div>
+
+                <div className="pt-2 border-t border-zinc-800/50 space-y-1">
+                    <div className="flex items-center gap-1.5 px-2">
+                        <span className="text-[8px] font-black uppercase text-zinc-600 tracking-widest">{t('sessionBehavior.internetSharingSection')}</span>
+                    </div>
+                    {gnirehtetFound ? (
+                        <div className={`transition-opacity ${internetSharingAvailable ? 'opacity-100' : 'opacity-40 pointer-events-none'} ${internetSharingBusy ? 'pointer-events-none' : ''}`}>
+                            <Toggle
+                                checked={internetSharingActive}
+                                onChange={onToggleInternetSharing}
+                                icon={Wifi}
+                                label={t('sessionBehavior.internetSharing')}
+                                tooltip={
+                                    internetSharingAvailable
+                                        ? t('sessionBehavior.internetSharingTooltip')
+                                        : internetSharingWifiBlocked
+                                            ? t('sessionBehavior.internetSharingWifiBlockedTooltip')
+                                            : t('sessionBehavior.internetSharingUnavailableTooltip')
+                                }
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-between gap-3 py-1 bg-zinc-950/30 rounded-lg px-2 border border-transparent">
+                            <div className="flex items-center gap-2 min-w-0">
+                                <div className="p-1 rounded-md shrink-0 bg-zinc-800/50 text-zinc-500">
+                                    <Wifi size={12} />
+                                </div>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="text-[10px] font-bold uppercase tracking-tight truncate text-zinc-500">
+                                        {t('sessionBehavior.internetSharing')}
+                                    </span>
+                                    <Tooltip text={t('sessionBehavior.internetSharingTooltip')} />
+                                </div>
+                            </div>
+                            {hostOs === 'macos' ? (
+                                <a
+                                    href="https://github.com/Genymobile/gnirehtet/releases/latest"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 shrink-0 text-[8px] font-black uppercase tracking-wider text-primary hover:underline"
+                                >
+                                    {t('sessionBehavior.internetSharingManualInstall')} <ExternalLink size={10} />
+                                </a>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={onDownloadGnirehtet}
+                                    disabled={isDownloadingGnirehtet}
+                                    className="inline-flex items-center gap-1 shrink-0 bg-primary/10 hover:bg-primary/20 border border-primary/30 rounded-md px-2 py-1 text-[8px] font-black uppercase tracking-wider text-primary transition-colors disabled:opacity-60 disabled:pointer-events-none"
+                                >
+                                    {isDownloadingGnirehtet ? (
+                                        <><RefreshCw size={10} className="animate-spin" /> {t('sessionBehavior.internetSharingDownloading', { progress: gnirehtetDownloadProgress })}</>
+                                    ) : (
+                                        <><Download size={10} /> {t('sessionBehavior.internetSharingInstall')}</>
+                                    )}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <div className="pt-2 border-t border-zinc-800/50 space-y-2">

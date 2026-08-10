@@ -212,7 +212,15 @@ export const fr: Translations = {
         selectRecordingFolderTitle: 'Sélectionner le Dossier d\'Enregistrement',
         // v4 features
         keepActive: 'Garder Actif',
-        keepActiveTooltip: 'Simule une activité utilisateur pour empêcher l\'écran de se mettre en veille (scrcpy v4+).'
+        keepActiveTooltip: 'Simule une activité utilisateur pour empêcher l\'écran de se mettre en veille (scrcpy v4+).',
+        internetSharingSection: 'Partage Internet (Expérimental)',
+        internetSharing: 'Partager Internet du PC',
+        internetSharingTooltip: 'Reverse tethering via ADB (Gnirehtet). Partage la connexion internet de cet ordinateur avec l\'appareil. Démarre et s\'arrête à la volée, indépendamment de la session de mirroring, et réutilise l\'ADB propre à l\'application.',
+        internetSharingUnavailableTooltip: 'Sélectionnez un appareil connecté dans le Hub d\'appareils pour activer le partage internet.',
+        internetSharingWifiBlockedTooltip: 'Indisponible en ADB sans fil : le VPN de gnirehtet peut entrer en conflit avec la connexion ADB Wi-Fi elle-même (limitation connue en amont). Connectez cet appareil en USB pour utiliser le partage internet.',
+        internetSharingManualInstall: 'Installation manuelle',
+        internetSharingInstall: 'Installer',
+        internetSharingDownloading: '{progress}%'
     },
     shortcuts: {
         title: 'Raccourcis (Alt +)',
@@ -311,6 +319,8 @@ export const fr: Translations = {
         pushingFile: '[SYSTEM] Envoi du fichier vers {device} : {filePath}...',
         installingApk: '[SYSTEM] Installation de l\'APK sur {device} : {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[ERROR] La commande a échoué : {error}'
+        commandFailed: '[ERROR] La commande a échoué : {error}',
+        gnirehtetStartFailed: '[ERROR] Échec du démarrage du partage internet : {error}',
+        gnirehtetRelayDown: '[GNIREHTET] Le serveur relay s\'est arrêté de manière inattendue, partage internet désactivé pour tous les appareils.'
     }
 };
