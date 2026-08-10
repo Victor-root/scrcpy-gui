@@ -33,6 +33,7 @@ chrono = "0.4.43"
 # (all platforms) and Ctrl+Alt+Shift+W to drag the borderless scrcpy window
 # with the mouse (Windows-only). See src/shortcuts.rs and src/grab.rs.
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-window-state = "2"
 
 # Windows-only: read the scrcpy mirror window's client-area position natively
 # (EnumWindows + ClientToScreen) to persist it across sessions. Pinned to the

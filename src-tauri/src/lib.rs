@@ -76,7 +76,22 @@ pub fn run() {
         // The global-shortcut plugin must be registered on the builder (its
         // setup wires the OS hotkey manager on the main thread). Individual
         // shortcuts are registered below in setup.
-        .plugin(shortcuts::plugin());
+        .plugin(shortcuts::plugin())
+        // Remember the main window's size, position and maximized state across
+        // restarts. Must be added here, before .setup(), because tauri builds
+        // config-defined windows (like "main") before the setup closure runs;
+        // registering the plugin inside setup() would miss restoring them. The
+        // splashscreen is a transient window and must be excluded from tracking.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::SIZE
+                        | tauri_plugin_window_state::StateFlags::POSITION
+                        | tauri_plugin_window_state::StateFlags::MAXIMIZED,
+                )
+                .with_denylist(&["splashscreen"])
+                .build(),
+        );
 
     builder
         .setup(|app| {
