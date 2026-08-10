@@ -13,6 +13,98 @@ interface SessionBehaviorProps {
     setConfig: (c: ScrcpyConfig) => void;
 }
 
+// Module-scope, not defined inside SessionBehavior: a component defined inside
+// another component's render body is a new function (and so a new React
+// component type) on every render, which forces React to unmount and
+// remount every instance -- including the Tooltip nested inside -- any time
+// SessionBehavior re-renders, even for unrelated prop changes. That silently
+// resets Tooltip's own hover state, so it can disappear mid-hover.
+const AudioCodecPicker = ({ value, onChange, disabled }: { value: AudioCodec, onChange: (v: AudioCodec) => void, disabled: boolean }) => {
+    const { t } = useI18n();
+    const [isOpen, setIsOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const onDoc = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
+        };
+        if (isOpen) document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (disabled) setIsOpen(false);
+    }, [disabled]);
+
+    const labelFor = (v: AudioCodec) =>
+        v === 'auto' ? t('sessionBehavior.audioCodecAuto') :
+            v === 'opus' ? t('sessionBehavior.audioCodecOpus') :
+                v === 'aac' ? t('sessionBehavior.audioCodecAac') :
+                    v === 'flac' ? t('sessionBehavior.audioCodecFlac') :
+                        t('sessionBehavior.audioCodecRaw');
+
+    return (
+        <div
+            ref={ref}
+            onClick={(e) => e.stopPropagation()}
+            className={`mt-0.5 pl-7 pr-2 pb-1 transition-opacity ${disabled ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}
+        >
+            <div className="flex items-center gap-1.5">
+                <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">{t('sessionBehavior.audioCodec')}</span>
+                <Tooltip text={t('sessionBehavior.audioCodecTooltip')} />
+                <div className="relative ml-auto">
+                    <button
+                        type="button"
+                        onClick={() => !disabled && setIsOpen(o => !o)}
+                        disabled={disabled}
+                        className="flex items-center gap-1 bg-zinc-950/60 border border-zinc-800 hover:border-primary/60 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-300 hover:text-primary transition-colors"
+                    >
+                        <span>{labelFor(value)}</span>
+                        <ChevronDown size={10} className={`transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isOpen && (
+                        <div className="absolute right-0 top-full mt-1 z-50 min-w-[88px] bg-zinc-950 border border-zinc-800 rounded-md shadow-2xl py-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
+                            {AUDIO_CODEC_VALUES.map((opt) => (
+                                <div
+                                    key={opt}
+                                    onClick={() => { onChange(opt); setIsOpen(false); }}
+                                    className={`px-2 py-1 text-[9px] uppercase tracking-wider font-bold cursor-pointer transition-colors ${value === opt ? 'bg-primary/20 text-primary' : 'text-zinc-400 hover:bg-primary hover:text-on-primary'}`}
+                                >
+                                    {labelFor(opt)}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Toggle = ({ checked, onChange, icon: Icon, label, tooltip, danger = false }: { checked: boolean, onChange: (v: boolean) => void, icon: any, label: string, tooltip: string, danger?: boolean }) => (
+    <div
+        onClick={() => onChange(!checked)}
+        className="flex items-center justify-between gap-3 group cursor-pointer py-1 bg-zinc-950/30 rounded-lg px-2 border border-transparent hover:border-zinc-800 transition-all"
+    >
+        <div className="flex items-center gap-2 min-w-0">
+            <div className={`p-1 rounded-md shrink-0 transition-colors ${checked ? (danger ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary') : 'bg-zinc-800/50 text-zinc-500 group-hover:text-zinc-300'}`}>
+                <Icon size={12} />
+            </div>
+            <div className="flex items-center gap-1.5 min-w-0">
+                <span className={`text-[10px] font-bold uppercase tracking-tight truncate transition-colors ${checked ? (danger ? 'text-red-400' : 'text-zinc-200') : 'text-zinc-500 group-hover:text-zinc-400'}`}>
+                    {label}
+                </span>
+                <div className="shrink-0">
+                    <Tooltip text={tooltip} />
+                </div>
+            </div>
+        </div>
+        <div className={`w-6 h-3.5 shrink-0 rounded-full p-0.5 transition-all duration-300 ${checked ? (danger ? 'bg-red-600' : 'bg-primary') : 'bg-zinc-800'}`}>
+            <div className={`w-2.5 h-2.5 rounded-full shadow-sm transition-all duration-300 ${checked ? (danger ? 'bg-white translate-x-2.5' : 'bg-[var(--text-on-primary)] translate-x-2.5') : 'bg-white translate-x-0'}`} />
+        </div>
+    </div>
+);
+
 export default function SessionBehavior({ config, setConfig }: SessionBehaviorProps) {
     const { t } = useI18n();
 
@@ -38,91 +130,6 @@ export default function SessionBehavior({ config, setConfig }: SessionBehaviorPr
             console.error(e);
         }
     };
-
-    const AudioCodecPicker = ({ value, onChange, disabled }: { value: AudioCodec, onChange: (v: AudioCodec) => void, disabled: boolean }) => {
-        const [isOpen, setIsOpen] = useState(false);
-        const ref = useRef<HTMLDivElement>(null);
-
-        useEffect(() => {
-            const onDoc = (e: MouseEvent) => {
-                if (ref.current && !ref.current.contains(e.target as Node)) setIsOpen(false);
-            };
-            if (isOpen) document.addEventListener('mousedown', onDoc);
-            return () => document.removeEventListener('mousedown', onDoc);
-        }, [isOpen]);
-
-        useEffect(() => {
-            if (disabled) setIsOpen(false);
-        }, [disabled]);
-
-        const labelFor = (v: AudioCodec) =>
-            v === 'auto' ? t('sessionBehavior.audioCodecAuto') :
-                v === 'opus' ? t('sessionBehavior.audioCodecOpus') :
-                    v === 'aac' ? t('sessionBehavior.audioCodecAac') :
-                        v === 'flac' ? t('sessionBehavior.audioCodecFlac') :
-                            t('sessionBehavior.audioCodecRaw');
-
-        return (
-            <div
-                ref={ref}
-                onClick={(e) => e.stopPropagation()}
-                className={`mt-0.5 pl-7 pr-2 pb-1 transition-opacity ${disabled ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}
-            >
-                <div className="flex items-center gap-1.5">
-                    <span className="text-[8px] font-black uppercase text-zinc-500 tracking-widest">{t('sessionBehavior.audioCodec')}</span>
-                    <Tooltip text={t('sessionBehavior.audioCodecTooltip')} />
-                    <div className="relative ml-auto">
-                        <button
-                            type="button"
-                            onClick={() => !disabled && setIsOpen(o => !o)}
-                            disabled={disabled}
-                            className="flex items-center gap-1 bg-zinc-950/60 border border-zinc-800 hover:border-primary/60 rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-zinc-300 hover:text-primary transition-colors"
-                        >
-                            <span>{labelFor(value)}</span>
-                            <ChevronDown size={10} className={`transition-transform duration-150 ${isOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        {isOpen && (
-                            <div className="absolute right-0 top-full mt-1 z-50 min-w-[88px] bg-zinc-950 border border-zinc-800 rounded-md shadow-2xl py-1 backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100">
-                                {AUDIO_CODEC_VALUES.map((opt) => (
-                                    <div
-                                        key={opt}
-                                        onClick={() => { onChange(opt); setIsOpen(false); }}
-                                        className={`px-2 py-1 text-[9px] uppercase tracking-wider font-bold cursor-pointer transition-colors ${value === opt ? 'bg-primary/20 text-primary' : 'text-zinc-400 hover:bg-primary hover:text-on-primary'}`}
-                                    >
-                                        {labelFor(opt)}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    const Toggle = ({ checked, onChange, icon: Icon, label, tooltip, danger = false }: { checked: boolean, onChange: (v: boolean) => void, icon: any, label: string, tooltip: string, danger?: boolean }) => (
-        <div
-            onClick={() => onChange(!checked)}
-            className="flex items-center justify-between gap-3 group cursor-pointer py-1 bg-zinc-950/30 rounded-lg px-2 border border-transparent hover:border-zinc-800 transition-all"
-        >
-            <div className="flex items-center gap-2 min-w-0">
-                <div className={`p-1 rounded-md shrink-0 transition-colors ${checked ? (danger ? 'bg-red-500/10 text-red-500' : 'bg-primary/10 text-primary') : 'bg-zinc-800/50 text-zinc-500 group-hover:text-zinc-300'}`}>
-                    <Icon size={12} />
-                </div>
-                <div className="flex items-center gap-1.5 min-w-0">
-                    <span className={`text-[10px] font-bold uppercase tracking-tight truncate transition-colors ${checked ? (danger ? 'text-red-400' : 'text-zinc-200') : 'text-zinc-500 group-hover:text-zinc-400'}`}>
-                        {label}
-                    </span>
-                    <div className="shrink-0">
-                        <Tooltip text={tooltip} />
-                    </div>
-                </div>
-            </div>
-            <div className={`w-6 h-3.5 shrink-0 rounded-full p-0.5 transition-all duration-300 ${checked ? (danger ? 'bg-red-600' : 'bg-primary') : 'bg-zinc-800'}`}>
-                <div className={`w-2.5 h-2.5 rounded-full shadow-sm transition-all duration-300 ${checked ? (danger ? 'bg-white translate-x-2.5' : 'bg-[var(--text-on-primary)] translate-x-2.5') : 'bg-white translate-x-0'}`} />
-            </div>
-        </div>
-    );
 
     return (
         <div className="space-y-4">

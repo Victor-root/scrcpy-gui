@@ -67,6 +67,142 @@ const VDSlider = ({ label, value, min, max, unit = "", onChange }: { label: stri
     );
 };
 
+// Module-scope, not defined inside ControlPanel: a component defined inside
+// another component's render body is a new function (and so a new React
+// component type) on every render, which forces React to unmount and remount
+// every instance -- including the Tooltip nested inside PerformanceGrid --
+// any time ControlPanel re-renders, even for unrelated prop changes. That
+// silently resets Tooltip's own hover state, so it can disappear mid-hover.
+const CustomSelect = ({ value, onChange, options, label, className = "" }: { value: any, onChange: (val: any) => void, options: { value: any, label: string }[], label?: string, className?: string }) => {
+    const { t } = useI18n();
+    const [isOpen, setIsOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen]);
+
+    const selectedOption = options.find(opt => opt.value === value) || { value, label: t('controlPanel.custom') };
+
+    return (
+        <div className={`relative ${className}`} ref={containerRef}>
+            {label && <label className="text-[9px] font-black text-zinc-500 uppercase tracking-tighter mb-1 block">{label}</label>}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-md px-2 py-1.5 text-[11px] text-zinc-300 flex items-center justify-between hover:border-primary/60 hover:bg-black transition-all group"
+            >
+                <span className="truncate">{selectedOption?.label}</span>
+                <ChevronDown size={14} className={`text-zinc-500 group-hover:text-primary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-950 border border-zinc-800 rounded-md shadow-2xl z-[100] py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl">
+                    {options.map((opt) => (
+                        <div
+                            key={opt.value}
+                            onClick={() => {
+                                onChange(opt.value);
+                                setIsOpen(false);
+                            }}
+                            className={`px-2 py-1.5 text-[11px] cursor-pointer transition-colors ${opt.value === value ? 'bg-primary/20 text-primary font-bold' : 'text-zinc-400 hover:bg-primary hover:text-on-primary font-medium'}`}
+                        >
+                            {opt.label}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+const PerformanceGrid = ({ config, onChange, rendererOptions, showResolution = true, showCodec = true }: { config: ScrcpyConfig, onChange: (field: keyof ScrcpyConfig, value: any) => void, rendererOptions: { value: any, label: string }[], showResolution?: boolean, showCodec?: boolean }) => {
+    const { t } = useI18n();
+    return (
+        <>
+        <div className={`grid ${showResolution ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
+            {showResolution && (
+                <CustomSelect
+                    label={t('controlPanel.resolution')}
+                    value={config.res || "0"}
+                    onChange={(val) => onChange('res', val)}
+                    options={[
+                        { value: "0", label: t('controlPanel.resolutionOriginal') },
+                        { value: "3840", label: "4K" },
+                        { value: "2560", label: "2K" },
+                        { value: "1920", label: "1080p" },
+                        { value: "1600", label: "900p" },
+                        { value: "1280", label: "720p" },
+                        { value: "1024", label: "576p" },
+                        { value: "800", label: "480p" },
+                    ]}
+                />
+            )}
+            {showCodec && (
+                <CustomSelect
+                    label={t('controlPanel.codec')}
+                    value={config.codec || "h264"}
+                    onChange={(val) => onChange('codec', val)}
+                    options={[
+                        { value: "h264", label: "H.264" },
+                        { value: "h265", label: "H.265" },
+                        { value: "av1", label: "AV1" },
+                    ]}
+                />
+            )}
+            <CustomSelect
+                label={t('controlPanel.fps')}
+                value={config.fps === undefined || config.fps === null ? 0 : config.fps}
+                onChange={(val) => onChange('fps', parseInt(val) === 0 ? undefined : parseInt(val))}
+                options={[
+                    { value: 0, label: t('controlPanel.rendererAuto') || "Auto" },
+                    { value: 30, label: "30" },
+                    { value: 60, label: "60" },
+                    { value: 90, label: "90" },
+                    { value: 120, label: "120" },
+                ]}
+            />
+            <CustomSelect
+                label={t('controlPanel.rotation')}
+                value={config.rotation || "0"}
+                onChange={(val) => onChange('rotation', val)}
+                options={[
+                    { value: "0", label: "0°" },
+                    { value: "270", label: "-90°" },
+                    { value: "90", label: "+90°" },
+                    { value: "180", label: "180°" },
+                ]}
+            />
+            <CustomSelect
+                label={t('controlPanel.graphicsRenderer')}
+                value={config.renderDriver || 'auto'}
+                onChange={(val) => onChange('renderDriver', mapRendererSelection(val))}
+                options={rendererOptions}
+            />
+        </div>
+        <Tooltip text={t('controlPanel.vsyncTooltip')}>
+            <div
+                className="flex items-center justify-between gap-2 cursor-pointer group px-2 py-1.5 rounded-lg border border-zinc-800/60 bg-zinc-950/20 hover:border-primary/40 transition-colors"
+                onClick={() => onChange('vsync', config.vsync === false)}
+            >
+                <div className="flex items-center gap-2">
+                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${config.vsync !== false ? 'bg-primary border-primary' : 'border-zinc-700 group-hover:border-primary'}`}>
+                        {config.vsync !== false && <div className="w-1.5 h-1.5 bg-black rounded-[1px]" />}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase text-zinc-300 tracking-wide group-hover:text-primary transition-colors">{t('controlPanel.vsync')}</span>
+                </div>
+                <span className="text-[8px] font-black uppercase tracking-tighter text-zinc-600 group-hover:text-primary/70 transition-colors">{t('controlPanel.vsyncHint')}</span>
+            </div>
+        </Tooltip>
+        </>
+    );
+};
+
 export default function ControlPanel({
     config,
     setConfig,
@@ -84,134 +220,6 @@ export default function ControlPanel({
     };
 
     const rendererOptions = buildRendererOptions(renderDriverSupport, t('controlPanel.rendererAuto'));
-
-    const CustomSelect = ({ value, onChange, options, label, className = "" }: { value: any, onChange: (val: any) => void, options: { value: any, label: string }[], label?: string, className?: string }) => {
-        const [isOpen, setIsOpen] = useState(false);
-        const containerRef = useRef<HTMLDivElement>(null);
-
-        useEffect(() => {
-            const handleClickOutside = (event: MouseEvent) => {
-                if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-                    setIsOpen(false);
-                }
-            };
-            if (isOpen) document.addEventListener('mousedown', handleClickOutside);
-            return () => document.removeEventListener('mousedown', handleClickOutside);
-        }, [isOpen]);
-
-        const selectedOption = options.find(opt => opt.value === value) || { value, label: t('controlPanel.custom') };
-
-        return (
-            <div className={`relative ${className}`} ref={containerRef}>
-                {label && <label className="text-[9px] font-black text-zinc-500 uppercase tracking-tighter mb-1 block">{label}</label>}
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-md px-2 py-1.5 text-[11px] text-zinc-300 flex items-center justify-between hover:border-primary/60 hover:bg-black transition-all group"
-                >
-                    <span className="truncate">{selectedOption?.label}</span>
-                    <ChevronDown size={14} className={`text-zinc-500 group-hover:text-primary transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {isOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-950 border border-zinc-800 rounded-md shadow-2xl z-[100] py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 backdrop-blur-xl">
-                        {options.map((opt) => (
-                            <div
-                                key={opt.value}
-                                onClick={() => {
-                                    onChange(opt.value);
-                                    setIsOpen(false);
-                                }}
-                                className={`px-2 py-1.5 text-[11px] cursor-pointer transition-colors ${opt.value === value ? 'bg-primary/20 text-primary font-bold' : 'text-zinc-400 hover:bg-primary hover:text-on-primary font-medium'}`}
-                            >
-                                {opt.label}
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    // BitrateControl removed from here
-
-    const PerformanceGrid = ({ showResolution = true, showCodec = true }: { showResolution?: boolean, showCodec?: boolean }) => (
-        <>
-        <div className={`grid ${showResolution ? 'grid-cols-3' : 'grid-cols-2'} gap-2`}>
-            {showResolution && (
-                <CustomSelect
-                    label={t('controlPanel.resolution')}
-                    value={config.res || "0"}
-                    onChange={(val) => handleChange('res', val)}
-                    options={[
-                        { value: "0", label: t('controlPanel.resolutionOriginal') },
-                        { value: "3840", label: "4K" },
-                        { value: "2560", label: "2K" },
-                        { value: "1920", label: "1080p" },
-                        { value: "1600", label: "900p" },
-                        { value: "1280", label: "720p" },
-                        { value: "1024", label: "576p" },
-                        { value: "800", label: "480p" },
-                    ]}
-                />
-            )}
-            {showCodec && (
-                <CustomSelect
-                    label={t('controlPanel.codec')}
-                    value={config.codec || "h264"}
-                    onChange={(val) => handleChange('codec', val)}
-                    options={[
-                        { value: "h264", label: "H.264" },
-                        { value: "h265", label: "H.265" },
-                        { value: "av1", label: "AV1" },
-                    ]}
-                />
-            )}
-            <CustomSelect
-                label={t('controlPanel.fps')}
-                value={config.fps === undefined || config.fps === null ? 0 : config.fps}
-                onChange={(val) => handleChange('fps', parseInt(val) === 0 ? undefined : parseInt(val))}
-                options={[
-                    { value: 0, label: t('controlPanel.rendererAuto') || "Auto" },
-                    { value: 30, label: "30" },
-                    { value: 60, label: "60" },
-                    { value: 90, label: "90" },
-                    { value: 120, label: "120" },
-                ]}
-            />
-            <CustomSelect
-                label={t('controlPanel.rotation')}
-                value={config.rotation || "0"}
-                onChange={(val) => handleChange('rotation', val)}
-                options={[
-                    { value: "0", label: "0°" },
-                    { value: "270", label: "-90°" },
-                    { value: "90", label: "+90°" },
-                    { value: "180", label: "180°" },
-                ]}
-            />
-            <CustomSelect
-                label={t('controlPanel.graphicsRenderer')}
-                value={config.renderDriver || 'auto'}
-                onChange={(val) => handleChange('renderDriver', mapRendererSelection(val))}
-                options={rendererOptions}
-            />
-        </div>
-        <Tooltip text={t('controlPanel.vsyncTooltip')}>
-            <div
-                className="flex items-center justify-between gap-2 cursor-pointer group px-2 py-1.5 rounded-lg border border-zinc-800/60 bg-zinc-950/20 hover:border-primary/40 transition-colors"
-                onClick={() => handleChange('vsync', config.vsync === false)}
-            >
-                <div className="flex items-center gap-2">
-                    <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${config.vsync !== false ? 'bg-primary border-primary' : 'border-zinc-700 group-hover:border-primary'}`}>
-                        {config.vsync !== false && <div className="w-1.5 h-1.5 bg-black rounded-[1px]" />}
-                    </div>
-                    <span className="text-[10px] font-bold uppercase text-zinc-300 tracking-wide group-hover:text-primary transition-colors">{t('controlPanel.vsync')}</span>
-                </div>
-                <span className="text-[8px] font-black uppercase tracking-tighter text-zinc-600 group-hover:text-primary/70 transition-colors">{t('controlPanel.vsyncHint')}</span>
-            </div>
-        </Tooltip>
-        </>
-    );
 
     return (
         <main className="lg:col-span-6 space-y-4">
@@ -322,7 +330,7 @@ export default function ControlPanel({
                             </div>
 
                             <div className={`space-y-2.5 pt-0.5 transition-all duration-300 ${config.otgPure ? 'opacity-30 pointer-events-none grayscale' : 'opacity-100'}`}>
-                                <PerformanceGrid />
+                                <PerformanceGrid config={config} onChange={handleChange} rendererOptions={rendererOptions} />
                                 <BitrateControl label={t('controlPanel.bitrate')} value={config.bitrate || 8} onChange={(v) => handleChange('bitrate', v)} />
                             </div>
                         </>
@@ -441,7 +449,7 @@ export default function ControlPanel({
                             </div>
 
                             <div className={`space-y-2.5 pt-0.5`}>
-                                <PerformanceGrid showCodec={false} />
+                                <PerformanceGrid config={config} onChange={handleChange} rendererOptions={rendererOptions} showCodec={false} />
                                 <BitrateControl label={t('controlPanel.bitrate')} value={config.bitrate || 8} onChange={(v) => handleChange('bitrate', v)} />
                             </div>
                         </div>
@@ -554,7 +562,7 @@ export default function ControlPanel({
                             </div>
 
                             <div className="space-y-2.5 pt-0.5">
-                                <PerformanceGrid showResolution={false} />
+                                <PerformanceGrid config={config} onChange={handleChange} rendererOptions={rendererOptions} showResolution={false} />
                                 <BitrateControl label={t('controlPanel.bitrate')} value={config.bitrate || 8} onChange={(v) => handleChange('bitrate', v)} />
                                 {/* v4: Background Color for Desktop mode */}
                                 <div className="space-y-1">
