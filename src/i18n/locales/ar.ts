@@ -215,7 +215,15 @@ export const ar: Translations = {
         keepActive: 'الحفاظ على النشاط',
         keepActiveTooltip: 'يحاكي نشاط المستخدم لمنع الشاشة من الدخول في وضع السكون (Scrcpy v4+).',
         rememberWindowPosition: 'تذكر موضع النافذة',
-        rememberWindowPositionTooltip: 'إعادة فتح نافذة العرض في نفس المكان الذي وُضعت فيه آخر مرة. عطّل هذا الخيار إذا كنت تغيّر الدقة بشكل متكرر، فقد يفسد الموضع المحفوظ. إذا انتهى بها الأمر خارج الشاشة، اضغط Ctrl+Alt+Shift+C لإعادتها إلى المنتصف.'
+        rememberWindowPositionTooltip: 'إعادة فتح نافذة العرض في نفس المكان الذي وُضعت فيه آخر مرة. عطّل هذا الخيار إذا كنت تغيّر الدقة بشكل متكرر، فقد يفسد الموضع المحفوظ. إذا انتهى بها الأمر خارج الشاشة، اضغط Ctrl+Alt+Shift+C لإعادتها إلى المنتصف.',
+        internetSharingSection: 'مشاركة الإنترنت (تجريبي)',
+        internetSharing: 'مشاركة إنترنت الكمبيوتر',
+        internetSharingTooltip: 'ربط عكسي عبر ADB (Gnirehtet). يشارك اتصال إنترنت هذا الكمبيوتر مع الجهاز. يبدأ ويتوقف مباشرة، بشكل مستقل عن جلسة العرض، ويستخدم ADB الخاص بهذا التطبيق نفسه.',
+        internetSharingUnavailableTooltip: 'اختر جهازًا متصلاً في مركز الأجهزة لتفعيل مشاركة الإنترنت.',
+        internetSharingWifiBlockedTooltip: 'غير متاح عبر ADB اللاسلكي: قد تتعارض شبكة VPN الخاصة بـ Gnirehtet مع اتصال ADB عبر Wi-Fi نفسه (قيد معروف من upstream). وصّل هذا الجهاز عبر USB لاستخدام مشاركة الإنترنت.',
+        internetSharingInstall: 'تثبيت',
+        internetSharingDownloading: '{progress}%',
+        internetSharingManualInstall: 'تثبيت يدوي'
     },
     shortcuts: {
         title: 'الاختصارات (Alt +)',
@@ -314,7 +322,9 @@ export const ar: Translations = {
         pushingFile: '[النظام] جارٍ إرسال الملف إلى {device}: {filePath}...',
         installingApk: '[النظام] جارٍ تثبيت ملف APK على {device}: {filePath}...',
         adbPrefix: '[ADB] {message}',
-        commandFailed: '[خطأ] فشل تنفيذ الأمر: {error}'
+        commandFailed: '[خطأ] فشل تنفيذ الأمر: {error}',
+        gnirehtetStartFailed: '[خطأ] فشل بدء مشاركة الإنترنت: {error}',
+        gnirehtetRelayDown: '[GNIREHTET] توقف خادم التتابع بشكل غير متوقع، تم تعطيل مشاركة الإنترنت لجميع الأجهزة.'
     }
 };
 
