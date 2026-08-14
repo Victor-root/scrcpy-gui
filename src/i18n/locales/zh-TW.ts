@@ -204,6 +204,8 @@ export const zhTW: Translations = {
         borderlessTooltip: '無視窗邊框模式。視窗位置會在工作階段之間記住。移動視窗：Windows 上按 Ctrl+Alt+Shift+W，GNOME/KDE 上用 Super/Meta+拖曳。如果視窗跑到螢幕外，按 Ctrl+Alt+Shift+C 可將其重新置中。',
         rememberWindowPosition: '記住視窗位置',
         rememberWindowPositionTooltip: '在上次的位置重新開啟鏡像視窗。如果你經常切換解析度，建議關閉此項，否則可能打亂已儲存的位置。如果視窗跑到螢幕外，按 Ctrl+Alt+Shift+C 可將其重新置中。',
+        clipboardAutosync: '自動同步剪貼簿',
+        clipboardAutosyncTooltip: '每次裝置剪貼簿變化時自動複製到電腦剪貼簿。如果裝置背景的剪貼簿變化（輸入法聯想詞、應用程式等）一直覆蓋你剛在電腦上複製的內容，可以關閉此項。手動複製貼上（Ctrl+C / Ctrl+V）依然正常可用。',
         recordFeed: '錄影',
         recordFeedTooltip: '錄製畫面。',
         recordPath: '錄影路徑',

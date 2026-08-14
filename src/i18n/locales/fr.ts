@@ -204,6 +204,8 @@ export const fr: Translations = {
         borderlessTooltip: 'Lance scrcpy sans bordures de fenêtre. La position est mémorisée entre les sessions. Pour déplacer la fenêtre : Ctrl+Alt+Shift+W sous Windows, Super/Meta+glisser sous GNOME/KDE. Si jamais elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
         rememberWindowPosition: 'Mémoriser la position de la fenêtre',
         rememberWindowPositionTooltip: 'Rouvre la fenêtre de mirroring au même endroit que la dernière fois. Désactivez si vous changez souvent de résolution, ça peut sinon perturber la position enregistrée. Si elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
+        clipboardAutosync: 'Synchroniser le presse-papier automatiquement',
+        clipboardAutosyncTooltip: 'Copie automatiquement le presse-papier du téléphone vers celui du PC à chaque changement. Désactivez si des changements en arrière-plan côté téléphone (suggestions du clavier, applications, ...) écrasent ce que vous venez de copier sur le PC. Le copier-coller manuel (Ctrl+C / Ctrl+V) continue de fonctionner dans les deux cas.',
         recordFeed: 'Enregistrer le Flux',
         recordFeedTooltip: 'Enregistre le flux écran/caméra dans un fichier.',
         recordPath: 'Chemin d\'Enregistrement',

@@ -205,6 +205,8 @@ export const en = {
         borderlessTooltip: 'Launch scrcpy without window borders. Position is remembered between sessions. To move the window: Ctrl+Alt+Shift+W on Windows, Super/Meta+drag on GNOME/KDE. If it ever ends up off-screen, press Ctrl+Alt+Shift+C to snap it back to the centre.',
         rememberWindowPosition: 'Remember Window Position',
         rememberWindowPositionTooltip: 'Reopen the mirror window at the same spot it was last placed. Turn this off if you often change resolution -- it can throw off the saved spot. If it ever ends up off-screen, press Ctrl+Alt+Shift+C to snap it back to the centre.',
+        clipboardAutosync: 'Sync Clipboard Automatically',
+        clipboardAutosyncTooltip: 'Automatically copy the device clipboard to the computer\'s whenever it changes. Turn this off if background clipboard changes on the device (keyboard suggestions, apps, ...) keep overwriting what you just copied on the computer. Manual copy-paste (Ctrl+C / Ctrl+V) still works either way.',
         recordFeed: 'Record Feed',
         recordFeedTooltip: 'Record the screen/camera feed to a file.',
         recordPath: 'Record Path',

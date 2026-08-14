@@ -751,6 +751,12 @@ pub struct ScrcpyConfig {
     /// the user left it, including when relaunching borderless.
     window_x: Option<i32>,
     window_y: Option<i32>,
+    /// Whether the device clipboard should auto-sync to the computer's on every
+    /// change. On by default, matching scrcpy's own default and the app's
+    /// existing behavior; some users disable it because background clipboard
+    /// changes on the device (keyboard suggestions, apps, ...) can otherwise
+    /// silently clobber the computer clipboard while mirroring.
+    clipboard_autosync: Option<bool>,
 }
 
 fn resolve_audio_codec_flag<'a>(config: &'a ScrcpyConfig, audio_codec_override: Option<&'a str>) -> Option<&'a str> {
@@ -1185,6 +1191,9 @@ fn build_scrcpy_args(config: &ScrcpyConfig, video_dir_fallback: Option<String>, 
              if let Some(sa) = config.stay_awake { if sa { args.push("--stay-awake".to_string()); } }
              if let Some(ka) = config.keep_active { if ka { args.push("--keep-active".to_string()); } }
              if let Some(to) = config.turn_off { if to { args.push("--turn-screen-off".to_string()); args.push("--no-power-on".to_string()); } }
+             if !config.clipboard_autosync.unwrap_or(true) {
+                 args.push("--no-clipboard-autosync".to_string());
+             }
         }
 
         if config.session_mode == "camera" {
@@ -1663,6 +1672,7 @@ mod tests {
             vsync: None,
             window_x: None,
             window_y: None,
+            clipboard_autosync: None,
         }
     }
 
@@ -1801,6 +1811,29 @@ mod tests {
         let args = build_scrcpy_args(&config, None, None);
         assert!(!args.iter().any(|a| a.starts_with("--window-x")));
         assert!(!args.iter().any(|a| a.starts_with("--window-y")));
+    }
+
+    #[test]
+    fn test_build_scrcpy_args_clipboard_autosync_enabled_by_default() {
+        let config = base_config("mirror");
+        let args = build_scrcpy_args(&config, None, None);
+        assert!(!args.contains(&"--no-clipboard-autosync".to_string()));
+    }
+
+    #[test]
+    fn test_build_scrcpy_args_clipboard_autosync_can_be_disabled() {
+        let mut config = base_config("mirror");
+        config.clipboard_autosync = Some(false);
+        let args = build_scrcpy_args(&config, None, None);
+        assert!(args.contains(&"--no-clipboard-autosync".to_string()));
+    }
+
+    #[test]
+    fn test_build_scrcpy_args_clipboard_autosync_skipped_in_camera_mode() {
+        let mut config = base_config("camera");
+        config.clipboard_autosync = Some(false);
+        let args = build_scrcpy_args(&config, None, None);
+        assert!(!args.contains(&"--no-clipboard-autosync".to_string()));
     }
 
     #[test]
