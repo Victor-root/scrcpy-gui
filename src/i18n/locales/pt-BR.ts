@@ -204,6 +204,8 @@ export const ptBR: Translations = {
         borderlessTooltip: 'Inicia o scrcpy sem bordas de janela. A posição é lembrada entre sessões. Para mover a janela: Ctrl+Alt+Shift+W no Windows, Super/Meta+arrastar no GNOME/KDE. Se ela sair da tela, pressione Ctrl+Alt+Shift+C para recentralizá-la.',
         rememberWindowPosition: 'Lembrar Posição da Janela',
         rememberWindowPositionTooltip: 'Reabre a janela de espelhamento no mesmo lugar em que estava. Desative se você muda de resolução com frequência -- isso pode bagunçar a posição salva. Se ela sair da tela, pressione Ctrl+Alt+Shift+C para recentralizá-la.',
+        clipboardAutosync: 'Sincronizar Área de Transferência Automaticamente',
+        clipboardAutosyncTooltip: 'Copia automaticamente a área de transferência do dispositivo para a do computador sempre que ela muda. Desative se mudanças em segundo plano na área de transferência do dispositivo (sugestões do teclado, aplicativos, ...) continuarem sobrescrevendo o que você acabou de copiar no computador. Copiar e colar manualmente (Ctrl+C / Ctrl+V) continua funcionando normalmente.',
         recordFeed: 'Gravar Transmissão',
         recordFeedTooltip: 'Grava a transmissão da tela/câmera em um arquivo.',
         recordPath: 'Caminho de Gravação',

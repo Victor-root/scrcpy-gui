@@ -204,6 +204,8 @@ export const zhCN: Translations = {
         borderlessTooltip: '启动 scrcpy 时不显示窗口边框。窗口位置会在会话间记住。移动窗口：Windows 上按 Ctrl+Alt+Shift+W，GNOME/KDE 上用 Super/Meta+拖动。如果窗口跑到屏幕外，按 Ctrl+Alt+Shift+C 可将其重新居中。',
         rememberWindowPosition: '记住窗口位置',
         rememberWindowPositionTooltip: '在上次的位置重新打开镜像窗口。如果你经常切换分辨率，建议关闭此项，否则可能打乱已保存的位置。如果窗口跑到屏幕外，按 Ctrl+Alt+Shift+C 可将其重新居中。',
+        clipboardAutosync: '自动同步剪贴板',
+        clipboardAutosyncTooltip: '每次设备剪贴板变化时自动复制到电脑剪贴板。如果设备后台的剪贴板变化（输入法联想词、应用等）一直覆盖你刚在电脑上复制的内容，可以关闭此项。手动复制粘贴（Ctrl+C / Ctrl+V）依然正常可用。',
         recordFeed: '录制画面',
         recordFeedTooltip: '将屏幕或摄像头画面录制到文件。',
         recordPath: '录制路径',

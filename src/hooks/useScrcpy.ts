@@ -78,6 +78,12 @@ export interface ScrcpyConfig {
      *  invoking run_scrcpy; never set directly by the UI. */
     windowX?: number;
     windowY?: number;
+    /** Whether the device clipboard should auto-sync to the computer's on
+     *  every change. On by default, matching scrcpy's own default and the
+     *  app's existing behavior; some users disable it because background
+     *  clipboard changes on the device (keyboard suggestions, apps, ...) can
+     *  otherwise silently clobber the computer clipboard while mirroring. */
+    clipboardAutosync?: boolean;
 }
 
 /** Last known screen position of the scrcpy window, per device serial. Keyed
@@ -140,7 +146,8 @@ export function useScrcpy() {
         backgroundColor: '',
         keepActive: false,
         vsync: true,
-        rememberWindowPosition: true
+        rememberWindowPosition: true,
+        clipboardAutosync: true
     });
     const [windowPositions, setWindowPositions] = useState<WindowPositions>({});
     const prevDevicesRef = useRef<string[]>([]);
