@@ -206,6 +206,8 @@ languages: {
         rememberWindowPositionTooltip: 'Buka kembali jendela mirroring di posisi terakhir. Nonaktifkan jika Anda sering mengganti resolusi -- ini bisa mengacaukan posisi yang tersimpan. Jika jendela sampai keluar dari layar, tekan Ctrl+Alt+Shift+C untuk mengembalikannya ke tengah.',
         clipboardAutosync: 'Sinkronkan Clipboard Otomatis',
         clipboardAutosyncTooltip: 'Otomatis menyalin clipboard perangkat ke komputer setiap kali berubah. Nonaktifkan jika perubahan clipboard di latar belakang perangkat (saran keyboard, aplikasi, ...) terus menimpa apa yang baru saja Anda salin di komputer. Salin-tempel manual (Ctrl+C / Ctrl+V) tetap berfungsi.',
+        disableMouseHover: 'Nonaktifkan Efek Hover Mouse',
+        disableMouseHoverTooltip: 'Mencegah kursor mouse memicu efek hover Android (misalnya tombol yang meredup hanya karena kursor lewat di atasnya) saat bergerak tanpa klik, sama seperti perilaku sentuhan sungguhan. Klik tetap berfungsi normal.',
         recordFeed: 'Rekam Layar',
         recordFeedTooltip: 'Simpan rekaman layar/kamera langsung ke file.',
         recordPath: 'Jalur Rekaman',

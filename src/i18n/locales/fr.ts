@@ -206,6 +206,8 @@ export const fr: Translations = {
         rememberWindowPositionTooltip: 'Rouvre la fenêtre de mirroring au même endroit que la dernière fois. Désactivez si vous changez souvent de résolution, ça peut sinon perturber la position enregistrée. Si elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
         clipboardAutosync: 'Synchroniser le presse-papier automatiquement',
         clipboardAutosyncTooltip: 'Copie automatiquement le presse-papier du téléphone vers celui du PC à chaque changement. Désactivez si des changements en arrière-plan côté téléphone (suggestions du clavier, applications, ...) écrasent ce que vous venez de copier sur le PC. Le copier-coller manuel (Ctrl+C / Ctrl+V) continue de fonctionner dans les deux cas.',
+        disableMouseHover: 'Désactiver les effets de survol de la souris',
+        disableMouseHoverTooltip: 'Empêche le curseur de la souris de déclencher les effets de survol d\'Android (par exemple un bouton qui grise juste au passage de la souris) quand elle bouge sans cliquer, comme avec un vrai écran tactile. Les clics continuent de fonctionner normalement.',
         recordFeed: 'Enregistrer le Flux',
         recordFeedTooltip: 'Enregistre le flux écran/caméra dans un fichier.',
         recordPath: 'Chemin d\'Enregistrement',

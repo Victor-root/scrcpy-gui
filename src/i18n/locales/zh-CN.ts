@@ -206,6 +206,8 @@ export const zhCN: Translations = {
         rememberWindowPositionTooltip: '在上次的位置重新打开镜像窗口。如果你经常切换分辨率，建议关闭此项，否则可能打乱已保存的位置。如果窗口跑到屏幕外，按 Ctrl+Alt+Shift+C 可将其重新居中。',
         clipboardAutosync: '自动同步剪贴板',
         clipboardAutosyncTooltip: '每次设备剪贴板变化时自动复制到电脑剪贴板。如果设备后台的剪贴板变化（输入法联想词、应用等）一直覆盖你刚在电脑上复制的内容，可以关闭此项。手动复制粘贴（Ctrl+C / Ctrl+V）依然正常可用。',
+        disableMouseHover: '禁用鼠标悬停效果',
+        disableMouseHoverTooltip: '防止鼠标光标移动（不点击）时触发安卓的悬停效果（例如按钮仅因光标经过就变灰），与真实触摸的表现一致。点击依然正常生效。',
         recordFeed: '录制画面',
         recordFeedTooltip: '将屏幕或摄像头画面录制到文件。',
         recordPath: '录制路径',

@@ -84,6 +84,12 @@ export interface ScrcpyConfig {
      *  clipboard changes on the device (keyboard suggestions, apps, ...) can
      *  otherwise silently clobber the computer clipboard while mirroring. */
     clipboardAutosync?: boolean;
+    /** Stops the mouse's hover/motion events from reaching the device (only
+     *  clicks do) in scrcpy's default (non-HID) mouse mode, so passing the
+     *  cursor over a button no longer triggers Android's real hover effect --
+     *  something that never happens with actual touch input either. Off by
+     *  default, matching scrcpy's own default behavior. */
+    disableMouseHover?: boolean;
 }
 
 /** Last known screen position of the scrcpy window, per device serial. Keyed
@@ -161,7 +167,8 @@ export function useScrcpy() {
         keepActive: false,
         vsync: true,
         rememberWindowPosition: true,
-        clipboardAutosync: true
+        clipboardAutosync: true,
+        disableMouseHover: false
     });
     const [windowPositions, setWindowPositions] = useState<WindowPositions>({});
     const prevDevicesRef = useRef<string[]>([]);

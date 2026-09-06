@@ -206,6 +206,8 @@ export const zhTW: Translations = {
         rememberWindowPositionTooltip: '在上次的位置重新開啟鏡像視窗。如果你經常切換解析度，建議關閉此項，否則可能打亂已儲存的位置。如果視窗跑到螢幕外，按 Ctrl+Alt+Shift+C 可將其重新置中。',
         clipboardAutosync: '自動同步剪貼簿',
         clipboardAutosyncTooltip: '每次裝置剪貼簿變化時自動複製到電腦剪貼簿。如果裝置背景的剪貼簿變化（輸入法聯想詞、應用程式等）一直覆蓋你剛在電腦上複製的內容，可以關閉此項。手動複製貼上（Ctrl+C / Ctrl+V）依然正常可用。',
+        disableMouseHover: '停用滑鼠懸停效果',
+        disableMouseHoverTooltip: '防止滑鼠游標移動（不點擊）時觸發 Android 的懸停效果（例如按鈕僅因游標經過就變灰），與真實觸控的表現一致。點擊依然正常生效。',
         recordFeed: '錄影',
         recordFeedTooltip: '錄製畫面。',
         recordPath: '錄影路徑',

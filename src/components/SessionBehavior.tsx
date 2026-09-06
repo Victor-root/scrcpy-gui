@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { ScrcpyConfig } from '../hooks/useScrcpy';
 import Tooltip from './Tooltip';
-import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Move, Wifi, Download, RefreshCw, ExternalLink, Clipboard } from 'lucide-react';
+import { Coffee, MonitorOff, Volume2, Layers, Maximize, Square, Circle, Folder, Settings2, ChevronDown, ActivitySquare, Move, Wifi, Download, RefreshCw, ExternalLink, Clipboard, MousePointer2 } from 'lucide-react';
 import { useI18n } from '../i18n';
 
 const AUDIO_CODEC_VALUES = ['auto', 'opus', 'aac', 'flac', 'raw'] as const;
@@ -235,6 +235,13 @@ export default function SessionBehavior({
                         icon={Clipboard}
                         label={t('sessionBehavior.clipboardAutosync')}
                         tooltip={t('sessionBehavior.clipboardAutosyncTooltip')}
+                    />
+                    <Toggle
+                        checked={config.disableMouseHover || false}
+                        onChange={(v) => handleChange('disableMouseHover', v)}
+                        icon={MousePointer2}
+                        label={t('sessionBehavior.disableMouseHover')}
+                        tooltip={t('sessionBehavior.disableMouseHoverTooltip')}
                     />
                     <Toggle
                         checked={config.record || false}
