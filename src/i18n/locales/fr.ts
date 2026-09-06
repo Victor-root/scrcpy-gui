@@ -204,6 +204,8 @@ export const fr: Translations = {
         borderlessTooltip: 'Lance scrcpy sans bordures de fenêtre. La position est mémorisée entre les sessions. Pour déplacer la fenêtre : Ctrl+Alt+Shift+W sous Windows, Super/Meta+glisser sous GNOME/KDE. Si jamais elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
         rememberWindowPosition: 'Mémoriser la position de la fenêtre',
         rememberWindowPositionTooltip: 'Rouvre la fenêtre de mirroring au même endroit que la dernière fois. Désactivez si vous changez souvent de résolution, ça peut sinon perturber la position enregistrée. Si elle se retrouve hors de l\'écran, appuyez sur Ctrl+Alt+Shift+C pour la recentrer.',
+        disableMouseHover: 'Désactiver les effets de survol de la souris',
+        disableMouseHoverTooltip: 'Empêche le curseur de la souris de déclencher les effets de survol d\'Android (par exemple un bouton qui grise juste au passage de la souris) quand elle bouge sans cliquer, comme avec un vrai écran tactile. Les clics continuent de fonctionner normalement.',
         recordFeed: 'Enregistrer le Flux',
         recordFeedTooltip: 'Enregistre le flux écran/caméra dans un fichier.',
         recordPath: 'Chemin d\'Enregistrement',

@@ -712,6 +712,12 @@ pub struct ScrcpyConfig {
     res: Option<String>,
     hid_keyboard: Option<bool>,
     hid_mouse: Option<bool>,
+    /// Stops the mouse's hover/motion events from reaching the device (only
+    /// clicks do) in scrcpy's default (non-HID) mouse mode, so passing the
+    /// cursor over a button no longer triggers Android's real hover effect --
+    /// something that never happens with actual touch input either. Off by
+    /// default, matching scrcpy's own default behavior.
+    disable_mouse_hover: Option<bool>,
     render_driver: Option<String>,
     // v4 features
     flex_display: Option<bool>,
@@ -1111,6 +1117,13 @@ fn build_scrcpy_args(config: &ScrcpyConfig, video_dir_fallback: Option<String>, 
         }
         if hid_mouse {
             args.push("--mouse=uhid".to_string());
+        } else if config.disable_mouse_hover.unwrap_or(false) {
+            // scrcpy's default mouse mode (sdk) forwards hover/motion events to
+            // the device even without a click, so Android shows real hover
+            // effects (e.g. a button greys out just from the cursor passing
+            // over it) that never happen with actual touch. This flag stops
+            // that forwarding, so only clicks reach the device.
+            args.push("--no-mouse-hover".to_string());
         }
 
         if let Some(render_driver) = &config.render_driver {
@@ -1631,6 +1644,7 @@ mod tests {
             res: None,
             hid_keyboard: None,
             hid_mouse: None,
+            disable_mouse_hover: None,
             render_driver: None,
             flex_display: None,
             camera_torch: None,
@@ -1778,6 +1792,33 @@ mod tests {
         let args = build_scrcpy_args(&config, None, None);
         assert!(!args.iter().any(|a| a.starts_with("--window-x")));
         assert!(!args.iter().any(|a| a.starts_with("--window-y")));
+    }
+
+    #[test]
+    fn test_build_scrcpy_args_mouse_hover_enabled_by_default() {
+        let config = base_config("mirror");
+        let args = build_scrcpy_args(&config, None, None);
+        assert!(!args.contains(&"--no-mouse-hover".to_string()));
+    }
+
+    #[test]
+    fn test_build_scrcpy_args_mouse_hover_can_be_disabled() {
+        let mut config = base_config("mirror");
+        config.disable_mouse_hover = Some(true);
+        let args = build_scrcpy_args(&config, None, None);
+        assert!(args.contains(&"--no-mouse-hover".to_string()));
+    }
+
+    #[test]
+    fn test_build_scrcpy_args_mouse_hover_flag_skipped_with_hid_mouse() {
+        // --no-mouse-hover is only meaningful in scrcpy's default (sdk) mouse
+        // mode; --mouse=uhid already behaves like a real mouse its own way.
+        let mut config = base_config("mirror");
+        config.disable_mouse_hover = Some(true);
+        config.hid_mouse = Some(true);
+        let args = build_scrcpy_args(&config, None, None);
+        assert!(!args.contains(&"--no-mouse-hover".to_string()));
+        assert!(args.contains(&"--mouse=uhid".to_string()));
     }
 
     #[test]

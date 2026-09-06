@@ -78,6 +78,12 @@ export interface ScrcpyConfig {
      *  invoking run_scrcpy; never set directly by the UI. */
     windowX?: number;
     windowY?: number;
+    /** Stops the mouse's hover/motion events from reaching the device (only
+     *  clicks do) in scrcpy's default (non-HID) mouse mode, so passing the
+     *  cursor over a button no longer triggers Android's real hover effect --
+     *  something that never happens with actual touch input either. Off by
+     *  default, matching scrcpy's own default behavior. */
+    disableMouseHover?: boolean;
 }
 
 /** Last known screen position of the scrcpy window, per device serial. Keyed
@@ -140,7 +146,8 @@ export function useScrcpy() {
         backgroundColor: '',
         keepActive: false,
         vsync: true,
-        rememberWindowPosition: true
+        rememberWindowPosition: true,
+        disableMouseHover: false
     });
     const [windowPositions, setWindowPositions] = useState<WindowPositions>({});
     const prevDevicesRef = useRef<string[]>([]);
