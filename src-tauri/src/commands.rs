@@ -1028,6 +1028,252 @@ pub fn recenter_scrcpy_window(state: State<'_, ScrcpyState>, device: String) -> 
     Ok(())
 }
 
+/// Captures the mirror window's client area only (the mirrored screen
+/// content, not the OS title bar/borders) for `pid` and copies it straight to
+/// the system clipboard as an image, ready to paste elsewhere. Best-effort and
+/// silent: returns false if the window can't be found, or the platform
+/// capture/clipboard call fails.
+fn screenshot_window(pid: u32) -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Foundation::RECT;
+        use windows::Win32::Graphics::Gdi::{
+            CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC, DeleteObject, GetDC, GetDIBits,
+            ReleaseDC, SelectObject, BITMAPINFO, BITMAPINFOHEADER, BI_RGB, DIB_RGB_COLORS,
+        };
+        use windows::Win32::Storage::Xps::{PrintWindow, PRINT_WINDOW_FLAGS};
+        use windows::Win32::UI::WindowsAndMessaging::GetClientRect;
+
+        let Some(hwnd) = find_window_by_pid(pid) else {
+            return false;
+        };
+
+        let mut rect = RECT::default();
+        if unsafe { GetClientRect(hwnd, &mut rect) }.is_err() {
+            return false;
+        }
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+        if width <= 0 || height <= 0 {
+            return false;
+        }
+
+        return unsafe {
+            let hdc_window = GetDC(Some(hwnd));
+            if hdc_window.0.is_null() {
+                return false;
+            }
+            let hdc_mem = CreateCompatibleDC(Some(hdc_window));
+            let hbitmap = CreateCompatibleBitmap(hdc_window, width, height);
+            let old_obj = SelectObject(hdc_mem, hbitmap.into());
+
+            // PW_CLIENTONLY (1) restricts the capture to the client area,
+            // excluding the title bar/borders -- exactly the crop this needs,
+            // done by Windows itself rather than guessed here.
+            // PW_RENDERFULLCONTENT (2, Windows 8.1+) is required for windows
+            // using a hardware-accelerated (DXGI flip-model) swap chain, as
+            // scrcpy's SDL3 renderer does: without it, PrintWindow captures
+            // blank content on those windows instead of an error.
+            let captured = PrintWindow(hwnd, hdc_mem, PRINT_WINDOW_FLAGS(1 | 2)).as_bool();
+
+            let mut ok = false;
+            if captured {
+                let mut bmi = BITMAPINFO {
+                    bmiHeader: BITMAPINFOHEADER {
+                        biSize: std::mem::size_of::<BITMAPINFOHEADER>() as u32,
+                        biWidth: width,
+                        biHeight: -height, // negative = top-down DIB
+                        biPlanes: 1,
+                        biBitCount: 32,
+                        biCompression: BI_RGB.0 as u32,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                let row_bytes = width as usize * 4;
+                let mut pixels = vec![0u8; row_bytes * height as usize];
+                let lines = GetDIBits(
+                    hdc_mem,
+                    hbitmap,
+                    0,
+                    height as u32,
+                    Some(pixels.as_mut_ptr() as *mut _),
+                    &mut bmi,
+                    DIB_RGB_COLORS,
+                );
+                if lines > 0 {
+                    ok = write_bgra_to_windows_clipboard(&pixels, width as u32, height as u32);
+                }
+            }
+
+            let _ = SelectObject(hdc_mem, old_obj);
+            let _ = DeleteObject(hbitmap.into());
+            let _ = DeleteDC(hdc_mem);
+            ReleaseDC(Some(hwnd), hdc_window);
+            ok
+        };
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let pid_str = pid.to_string();
+        let Ok(search_out) = StdCommand::new("xdotool").args(["search", "--pid", &pid_str]).output() else {
+            return false;
+        };
+        let Some(window_id) = String::from_utf8_lossy(&search_out.stdout).lines().next().map(str::to_string) else {
+            return false;
+        };
+
+        // `import` (ImageMagick) captures exactly the given X11 window's own
+        // rendered content. Under a reparenting window manager (the common
+        // case on Linux), xdotool's window id is the client window itself,
+        // not the WM's decoration frame drawn around it, so this is already
+        // border-free, no cropping needed.
+        let Ok(capture) = StdCommand::new("import").args(["-window", &window_id, "png:-"]).output() else {
+            return false;
+        };
+        if !capture.status.success() || capture.stdout.is_empty() {
+            return false;
+        }
+
+        let Ok(mut xclip) = StdCommand::new("xclip")
+            .args(["-selection", "clipboard", "-t", "image/png"])
+            .stdin(Stdio::piped())
+            .spawn()
+        else {
+            return false;
+        };
+        if let Some(mut stdin) = xclip.stdin.take() {
+            use std::io::Write;
+            if stdin.write_all(&capture.stdout).is_err() {
+                return false;
+            }
+        }
+        return xclip.wait().map(|s| s.success()).unwrap_or(false);
+    }
+    #[cfg(target_os = "macos")]
+    {
+        // Same Accessibility-permission requirement as the position capture
+        // above. Gets the window's frame (position + size) then hands that
+        // rect straight to `screencapture`, which can write directly to the
+        // clipboard. Known limitation: unlike Windows/Linux this captures the
+        // whole window frame, including the title bar -- macOS exposes no
+        // simple "client area only" rect via AppleScript to crop it out.
+        let script = format!(
+            concat!(
+                "tell application \"System Events\"\n",
+                "try\n",
+                "set proc to first process whose unix id is {}\n",
+                "set win to first window of proc\n",
+                "set {{winX, winY}} to position of win\n",
+                "set {{winW, winH}} to size of win\n",
+                "(winX as string) & \" \" & (winY as string) & \" \" & (winW as string) & \" \" & (winH as string)\n",
+                "end try\n",
+                "end tell"
+            ),
+            pid
+        );
+        let Ok(output) = StdCommand::new("osascript").args(["-e", &script]).output() else {
+            return false;
+        };
+        if !output.status.success() {
+            return false;
+        }
+        let text = String::from_utf8_lossy(&output.stdout);
+        let mut parts = text.split_whitespace();
+        let (Some(Ok(x)), Some(Ok(y)), Some(Ok(w)), Some(Ok(h))) = (
+            parts.next().map(str::parse::<i32>),
+            parts.next().map(str::parse::<i32>),
+            parts.next().map(str::parse::<i32>),
+            parts.next().map(str::parse::<i32>),
+        ) else {
+            return false;
+        };
+        let rect = format!("{},{},{},{}", x, y, w, h);
+        return StdCommand::new("screencapture")
+            .args(["-R", &rect, "-c"])
+            .status()
+            .map(|s| s.success())
+            .unwrap_or(false);
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    {
+        let _ = pid;
+        false
+    }
+}
+
+/// Writes a top-down, 32bpp BGRA pixel buffer to the Windows clipboard as a
+/// CF_DIB image, ready to paste into any app that accepts pasted images.
+#[cfg(target_os = "windows")]
+fn write_bgra_to_windows_clipboard(pixels: &[u8], width: u32, height: u32) -> bool {
+    use windows::Win32::Foundation::{GlobalFree, HANDLE};
+    use windows::Win32::Graphics::Gdi::BITMAPINFOHEADER;
+    use windows::Win32::System::DataExchange::{
+        CloseClipboard, EmptyClipboard, OpenClipboard, SetClipboardData,
+    };
+    use windows::Win32::System::Memory::{GlobalAlloc, GlobalLock, GlobalUnlock, GLOBAL_ALLOC_FLAGS};
+
+    // CF_DIB (standard clipboard image format: a BITMAPINFOHEADER followed by
+    // the pixel data, no file header) and GMEM_MOVEABLE are long-stable Win32
+    // constants; hardcoded here since neither is exposed by this crate.
+    const CF_DIB: u32 = 8;
+    const GMEM_MOVEABLE: u32 = 0x0002;
+
+    let header_size = std::mem::size_of::<BITMAPINFOHEADER>();
+    let total_size = header_size + pixels.len();
+
+    unsafe {
+        let Ok(hmem) = GlobalAlloc(GLOBAL_ALLOC_FLAGS(GMEM_MOVEABLE), total_size) else {
+            return false;
+        };
+        let ptr = GlobalLock(hmem);
+        if ptr.is_null() {
+            let _ = GlobalFree(Some(hmem));
+            return false;
+        }
+
+        let header = BITMAPINFOHEADER {
+            biSize: header_size as u32,
+            biWidth: width as i32,
+            biHeight: -(height as i32), // negative = top-down, matching `pixels`
+            biPlanes: 1,
+            biBitCount: 32,
+            biCompression: 0, // BI_RGB
+            ..Default::default()
+        };
+
+        std::ptr::copy_nonoverlapping(&header as *const _ as *const u8, ptr as *mut u8, header_size);
+        std::ptr::copy_nonoverlapping(pixels.as_ptr(), (ptr as *mut u8).add(header_size), pixels.len());
+
+        let _ = GlobalUnlock(hmem);
+
+        if OpenClipboard(None).is_err() {
+            let _ = GlobalFree(Some(hmem));
+            return false;
+        }
+        let _ = EmptyClipboard();
+        let ok = SetClipboardData(CF_DIB, Some(HANDLE(hmem.0))).is_ok();
+        let _ = CloseClipboard();
+        if !ok {
+            let _ = GlobalFree(Some(hmem));
+        }
+        ok
+    }
+}
+
+/// Screenshots the running mirror window for `device` (client area only,
+/// no window borders) and copies it to the clipboard. Bound to a global OS
+/// shortcut (Ctrl+Alt+Shift+S, see `shortcuts.rs`). Returns whether it
+/// succeeded, so the shortcut handler can report the outcome. A no-op
+/// (false) if `device` has no tracked process (e.g. nothing is running).
+pub fn screenshot_device(state: &ScrcpyState, device: &str) -> bool {
+    let pid = state.processes.lock().unwrap().get(device).and_then(|c| c.id());
+    match pid {
+        Some(pid) => screenshot_window(pid),
+        None => false,
+    }
+}
+
 /// Records which device the GUI currently considers selected, so the global
 /// recentre shortcut (which fires with no window necessarily focused) knows
 /// which mirror window to act on.
