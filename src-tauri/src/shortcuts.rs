@@ -70,7 +70,7 @@ pub fn register<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error
 
 fn recenter_active_device<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<ScrcpyState>();
-    let device = state.active_device.lock().unwrap().clone();
+    let device = crate::commands::resolve_target_device(&state);
     if let Some(device) = device {
         crate::commands::recenter_device(&state, &device);
     }
@@ -78,7 +78,7 @@ fn recenter_active_device<R: Runtime>(app: &AppHandle<R>) {
 
 fn screenshot_active_device<R: Runtime>(app: &AppHandle<R>) {
     let state = app.state::<ScrcpyState>();
-    let device = state.active_device.lock().unwrap().clone();
+    let device = crate::commands::resolve_target_device(&state);
     let Some(device) = device else { return };
     let ok = crate::commands::screenshot_device(&state, &device);
     let message = if ok {

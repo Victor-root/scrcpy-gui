@@ -1309,6 +1309,68 @@ pub fn screenshot_device(state: &ScrcpyState, device: &str) -> bool {
     }
 }
 
+/// The PID of whichever window currently has OS keyboard focus, regardless of
+/// which app it belongs to. Best-effort: returns `None` if it can't be read
+/// (platform tool missing, permission denied, ...).
+fn focused_window_pid() -> Option<u32> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+
+        let hwnd = unsafe { GetForegroundWindow() };
+        if hwnd.0.is_null() {
+            return None;
+        }
+        let mut pid: u32 = 0;
+        unsafe { GetWindowThreadProcessId(hwnd, Some(&mut pid as *mut u32)) };
+        return (pid != 0).then_some(pid);
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let output = StdCommand::new("xdotool")
+            .args(["getactivewindow", "getwindowpid"])
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        return String::from_utf8_lossy(&output.stdout).trim().parse().ok();
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let script = "tell application \"System Events\" to unix id of first process whose frontmost is true";
+        let output = StdCommand::new("osascript").args(["-e", script]).output().ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        return String::from_utf8_lossy(&output.stdout).trim().parse().ok();
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+    None
+}
+
+/// Picks which device a global shortcut (recentre, screenshot) should act on:
+/// whichever tracked mirror window currently has OS keyboard focus, if any --
+/// this is what makes the shortcut follow the mirror the user is actually
+/// looking at when several are running at once, rather than always acting on
+/// whichever device happens to still be selected in the sidebar. Falls back
+/// to `active_device` (the sidebar selection) when no tracked mirror window
+/// has focus, e.g. the shortcut was pressed from an unrelated app -- the
+/// original reason `active_device` exists at all.
+pub fn resolve_target_device(state: &ScrcpyState) -> Option<String> {
+    if let Some(focused_pid) = focused_window_pid() {
+        let processes = state.processes.lock().unwrap();
+        let focused_device = processes
+            .iter()
+            .find(|(_, child)| child.id() == Some(focused_pid))
+            .map(|(device, _)| device.clone());
+        if focused_device.is_some() {
+            return focused_device;
+        }
+    }
+    state.active_device.lock().unwrap().clone()
+}
+
 /// Records which device the GUI currently considers selected, so the global
 /// recentre shortcut (which fires with no window necessarily focused) knows
 /// which mirror window to act on.
