@@ -128,7 +128,16 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
     Ok(())
 }
 
-
+// Release archives usually wrap their files in a single root folder.
+fn merge_extracted_into(temp_extract_dir: &Path, extract_path: &Path) -> Result<(), String> {
+    let mut entries = std::fs::read_dir(temp_extract_dir).map_err(|e| e.to_string())?;
+    if let Some(entry) = entries.next() {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        let source = if path.is_dir() { path.as_path() } else { temp_extract_dir };
+        copy_dir_all(source, extract_path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
 
 #[cfg(target_os = "windows")]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -530,14 +539,19 @@ pub async fn install_apk(device: String, file_path: String, custom_path: Option<
 
 #[tauri::command]
 pub async fn kill_adb(window: Window, custom_path: Option<String>) -> Result<serde_json::Value, String> {
-    let adb_path = get_binary_path("adb", custom_path);
     let _ = window.emit("scrcpy-log", "[SYSTEM] Terminating ADB stack...".to_string());
-    
+    terminate_adb_server(custom_path).await?;
+    let _ = window.emit("scrcpy-log", "[SYSTEM] ADB Stack Terminated.".to_string());
+    Ok(json!({ "success": true, "message": "ADB Stack Terminated" }))
+}
+
+async fn terminate_adb_server(custom_path: Option<String>) -> Result<(), String> {
+    let adb_path = get_binary_path("adb", custom_path);
     let mut child = create_command(&adb_path)
         .arg("kill-server")
         .spawn()
         .map_err(|e| e.to_string())?;
-        
+
     let _ = child.wait().await;
 
     // Force kill adb process via OS specifics
@@ -558,8 +572,7 @@ pub async fn kill_adb(window: Window, custom_path: Option<String>) -> Result<ser
             .await;
     }
 
-    let _ = window.emit("scrcpy-log", "[SYSTEM] ADB Stack Terminated.".to_string());
-    Ok(json!({ "success": true, "message": "ADB Stack Terminated" }))
+    Ok(())
 }
 
 #[tauri::command]
@@ -2839,20 +2852,11 @@ pub async fn download_gnirehtet(window: Window) -> Result<(), String> {
 
     // Merge into the existing scrcpy-bin folder (adb/scrcpy may already live there)
     // instead of replacing it outright.
-    let mut entries = std::fs::read_dir(&temp_extract_dir).map_err(|e| e.to_string())?;
-    if let Some(entry) = entries.next() {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-
-        if path.is_dir() {
-            copy_dir_all(&path, &extract_path).map_err(|e| e.to_string())?;
-        } else {
-            copy_dir_all(&temp_extract_dir, &extract_path).map_err(|e| e.to_string())?;
-        }
-    }
+    let installed = merge_extracted_into(&temp_extract_dir, &extract_path);
 
     if temp_extract_dir.exists() { let _ = std::fs::remove_dir_all(&temp_extract_dir); }
     if temp_archive_path.exists() { let _ = std::fs::remove_file(&temp_archive_path); }
+    installed?;
 
     window.emit("scrcpy-status", json!({ "type": "download-complete-gnirehtet", "success": true, "message": extract_path.to_string_lossy() })).unwrap();
     Ok(())
@@ -2970,10 +2974,6 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
     window.emit("scrcpy-log", "[SYSTEM] Download finished. Starting extraction...").unwrap();
     window.emit("scrcpy-status", json!({ "type": "downloading", "success": true, "message": "Extracting binaries..." })).unwrap();
 
-    if extract_path.exists() {
-        let _ = std::fs::remove_dir_all(&extract_path);
-    }
-    
     let temp_extract_dir = current_dir.join("temp_extract");
     if temp_extract_dir.exists() {
         let _ = std::fs::remove_dir_all(&temp_extract_dir);
@@ -2993,29 +2993,20 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
         archive.unpack(&temp_extract_dir).map_err(|e| format!("Failed to extract tar: {}", e))?;
     }
     
-    // Verify entries and move to scrcpy-bin
-    let mut entries = std::fs::read_dir(&temp_extract_dir).map_err(|e| e.to_string())?;
-    if let Some(entry) = entries.next() {
-        let entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path();
-        
-        if path.is_dir() {
-            // Usually scrcpy archives contain a single root folder
-            let _ = std::fs::rename(&path, &extract_path).or_else(|_| {
-                copy_dir_all(&path, &extract_path)
-            });
-        } else {
-            // If files are in root, rename the whole temp dir
-            let _ = std::fs::rename(&temp_extract_dir, &extract_path).or_else(|_| {
-                copy_dir_all(&temp_extract_dir, &extract_path)
-            });
-        }
-    }
-    
-    // Cleanup
+    // A running adb server (and the mirrors using it) keeps adb.exe and its DLLs
+    // locked on Windows, so the old files could not be overwritten.
+    window.emit("scrcpy-log", "[SYSTEM] Stopping ADB to replace the binaries...").unwrap();
+    let _ = terminate_adb_server(None).await;
+
+    // Merge over the existing scrcpy-bin folder: gnirehtet may live there too.
+    window.emit("scrcpy-log", "[SYSTEM] Installing binaries...").unwrap();
+    let installed = merge_extracted_into(&temp_extract_dir, &extract_path);
+
     if temp_extract_dir.exists() { let _ = std::fs::remove_dir_all(&temp_extract_dir); }
     if temp_archive_path.exists() { let _ = std::fs::remove_file(&temp_archive_path); }
+    installed.map_err(|e| format!("Failed to install binaries: {}", e))?;
 
+    window.emit("scrcpy-log", format!("[SYSTEM] scrcpy installed in {}", extract_path.to_string_lossy())).unwrap();
     window.emit("scrcpy-status", json!({ "type": "download-complete", "success": true, "message": extract_path.to_string_lossy() })).unwrap();
     Ok(())
 }
