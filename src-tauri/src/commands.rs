@@ -122,9 +122,33 @@ fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
         if ty.is_dir() {
             copy_dir_all(&entry_path, &target_path)?;
         } else {
-            std::fs::copy(&entry_path, &target_path)?;
+            replace_file(&entry_path, &target_path).map_err(|e| {
+                std::io::Error::new(e.kind(), format!("{}: {}", target_path.display(), e))
+            })?;
         }
     }
+    Ok(())
+}
+
+// Windows refuses to overwrite a running executable or a loaded DLL (adb,
+// a mirror's scrcpy, gnirehtet's relay) but allows renaming it, so the old
+// file is moved aside first and deleted once nothing holds it anymore.
+fn replace_file(src: &Path, target: &Path) -> std::io::Result<()> {
+    if !target.exists() {
+        return std::fs::copy(src, target).map(|_| ());
+    }
+    let mut aside_name = target.file_name().unwrap_or_default().to_os_string();
+    aside_name.push(".old");
+    let aside = target.with_file_name(aside_name);
+    if aside.exists() {
+        std::fs::remove_file(&aside)?;
+    }
+    std::fs::rename(target, &aside)?;
+    if let Err(e) = std::fs::copy(src, target) {
+        let _ = std::fs::rename(&aside, target);
+        return Err(e);
+    }
+    let _ = std::fs::remove_file(&aside);
     Ok(())
 }
 
@@ -2993,8 +3017,8 @@ pub async fn download_scrcpy(window: Window) -> Result<(), String> {
         archive.unpack(&temp_extract_dir).map_err(|e| format!("Failed to extract tar: {}", e))?;
     }
     
-    // A running adb server (and the mirrors using it) keeps adb.exe and its DLLs
-    // locked on Windows, so the old files could not be overwritten.
+    // Release the old adb so its files can be cleaned up and the next adb call
+    // starts the new version.
     window.emit("scrcpy-log", "[SYSTEM] Stopping ADB to replace the binaries...").unwrap();
     let _ = terminate_adb_server(None).await;
 
